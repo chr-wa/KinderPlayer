@@ -104,6 +104,15 @@
   <div class="grid-container" id="kachel-grid"></div>
 
   <script>
+
+// Erzwingt das Neuladen beim Start, um immer den neuesten Code von GitHub zu haben
+if (performance.navigation.type === 1) {
+  // Seite wurde manuell neu geladen
+} else {
+  // Bei jedem regulären App-Start frische Daten anfordern
+  fetch(window.location.href, { cache: 'reload' });
+}
+    
     const CLIENT_ID = 'a6c7e7f802d043c29cce919b9e0c7f45';
     const PLAYLIST_ID = '5SwgtF75qBUzNDSVKahajV';
     const REDIRECT_URI = 'https://chr-wa.github.io/KinderPlayer/';
