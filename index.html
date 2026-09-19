@@ -315,6 +315,41 @@ function hideChildFriendlyNotice() {
     } else {
       showLogin();
     }
+
+    const playPauseBtn = document.getElementById('play-pause-btn');
+
+playPauseBtn.addEventListener('click', async () => {
+  try {
+    // 1. Aktuellen Player-Zustand abfragen
+    const stateRes = await fetch("https://api.spotify.com/v1/me/player", {
+      headers: { "Authorization": `Bearer ${token}` }
+    });
+
+    if (stateRes.status === 200) {
+      const playerState = await stateRes.json();
+      
+      // Wenn Musik läuft -> Pausieren
+      if (playerState.is_playing) {
+        await fetch("https://api.spotify.com/v1/me/player/pause", {
+          method: "PUT",
+          headers: { "Authorization": `Bearer ${token}` }
+        });
+      } 
+      // Wenn Musik pausiert ist -> Fortsetzen
+      else {
+        await fetch("https://api.spotify.com/v1/me/player/play", {
+          method: "PUT",
+          headers: { "Authorization": `Bearer ${token}` }
+        });
+      }
+    } else if (stateRes.status === 204 || stateRes.status === 404) {
+      showChildFriendlyNotice("Kein aktiver Player gefunden. Bitte erst ein Lied über eine Kachel starten!");
+    }
+  } catch (e) {
+    console.error("Fehler beim Steuern der Wiedergabe:", e);
+  }
+});
+  
   </script>
 </body>
 
