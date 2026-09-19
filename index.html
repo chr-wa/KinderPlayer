@@ -46,6 +46,14 @@
       padding: 10px; 
       text-align: center; 
       cursor: pointer; 
+      border: 3px solid transparent;
+      transition: all 0.2s ease;
+    }
+    .tile.active {
+      border-color: #1db954;
+      background: #333333;
+      transform: scale(1.03);
+      box-shadow: 0 4px 15px rgba(29, 185, 84, 0.4);
     }
     .tile img { 
       width: 100%; 
@@ -74,10 +82,9 @@
 
   <h1 id="page-title">KinderPlayer</h1>
 
-  <!-- Play/Pause Button oben platzieren -->
   <div id="player-controls" style="text-align: center; margin: 20px 0; display: none;">
     <button id="play-pause-btn" style="font-size: 24px; padding: 12px 30px; border-radius: 30px; border: none; background-color: #1DB954; color: white; font-weight: bold; cursor: pointer;">
-      Play / Pause
+      ⏯️ Play / Pause
     </button>
   </div>
 
@@ -194,8 +201,6 @@
 
         const data = await res.json();
         document.getElementById('loading').style.display = 'none';
-        
-        // Button nach erfolgreichem Laden der Playlist anzeigen
         document.getElementById('player-controls').style.display = 'block';
 
         const grid = document.getElementById('kachel-grid');
@@ -215,6 +220,7 @@
 
           const tile = document.createElement('div');
           tile.className = 'tile';
+          tile.dataset.trackId = track.id;
 
           tile.onclick = async () => {
             try {
@@ -262,6 +268,7 @@
                 console.error("Wiedergabefehler:", err);
               } else {
                 hideChildFriendlyNotice();
+                setTimeout(updateCurrentlyPlaying, 500);
               }
 
             } catch (e) {
@@ -278,9 +285,45 @@
           grid.appendChild(tile);
         });
 
+        // Nach dem Aufbau der Kacheln direkt den aktuellen Status abfragen
+        updateCurrentlyPlaying();
+
       } catch (err) {
         console.error("Netzwerkfehler:", err);
         document.getElementById('loading').innerText = "Fehler beim Laden der Tracks.";
+      }
+    }
+
+    function markActiveTile(playingTrackId) {
+      const tiles = document.querySelectorAll('.tile');
+      tiles.forEach(tile => {
+        if (tile.dataset.trackId === playingTrackId) {
+          tile.classList.add('active');
+        } else {
+          tile.classList.remove('active');
+        }
+      });
+    }
+
+    async function updateCurrentlyPlaying() {
+      const token = localStorage.getItem("access_token");
+      if (!token) return;
+
+      try {
+        const res = await fetch("https://api.spotify.com/v1/me/player/currently-playing", {
+          headers: { "Authorization": `Bearer ${token}` }
+        });
+
+        if (res.status === 200) {
+          const data = await res.json();
+          if (data && data.item) {
+            markActiveTile(data.item.id);
+          }
+        } else if (res.status === 204) {
+          markActiveTile(null);
+        }
+      } catch (e) {
+        console.error("Fehler beim Abrufen des aktuellen Titels:", e);
       }
     }
 
@@ -307,7 +350,6 @@
       document.getElementById('player-controls').style.display = 'none';
     }
 
-    // Play/Pause Logik
     const playPauseBtn = document.getElementById('play-pause-btn');
 
     playPauseBtn.addEventListener('click', async () => {
@@ -333,6 +375,7 @@
               headers: { "Authorization": `Bearer ${token}` }
             });
           }
+          setTimeout(updateCurrentlyPlaying, 500);
         } else if (stateRes.status === 204 || stateRes.status === 404) {
           showChildFriendlyNotice("Kein aktiver Player gefunden. Bitte erst ein Lied über eine Kachel starten!");
         }
@@ -341,7 +384,6 @@
       }
     });
 
-    // App Start-Logik
     const args = new URLSearchParams(window.location.search);
     const code = args.get("code");
     const storedToken = localStorage.getItem("access_token");
@@ -353,6 +395,9 @@
     } else {
       showLogin();
     }
+
+    // Prüfe alle 5 Sekunden automatisch den aktuell gespielten Titel
+    setInterval(updateCurrentlyPlaying, 5000);
   </script>
 </body>
 </html>
