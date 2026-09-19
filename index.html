@@ -17,6 +17,16 @@
       background-color: #121212; 
       color: #fff; 
       font-family: sans-serif; 
+      body { 
+      margin: 0; 
+      padding: 20px; 
+      background-color: #121212; 
+      color: #fff; 
+      font-family: sans-serif; 
+      
+      /* Verhindert Wisch-Gesten für Vor/Zurück und Pull-to-Refresh */
+      overscroll-behavior: none;
+      touch-action: pan-y;
     }
     h1 { 
       text-align: center; 
@@ -399,6 +409,13 @@
 
     // Prüfe alle 5 Sekunden automatisch den aktuell gespielten Titel
     setInterval(updateCurrentlyPlaying, 5000);
+
+    // Verhindert, dass die PWA durch Wischgesten eine leere Verlaufsseite anzeigt
+    window.addEventListener('popstate', function(event) {
+      window.history.pushState(null, document.title, window.location.href);
+    });
+    window.history.pushState(null, document.title, window.location.href);
+    
   </script>
 </body>
 </html>
