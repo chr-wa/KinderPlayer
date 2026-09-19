@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Kinder Player</title>
+  <style>
+    * { 
+      box-sizing: border-box; 
+      user-select: none; 
+      -webkit-user-select: none; 
+    }
+    body { 
+      margin: 0; 
+      padding: 20px; 
+      background-color: #121212; 
+      color: #fff; 
+      font-family: sans-serif; 
+    }
+    h1 { 
+      text-align: center; 
+      color: #1db954; 
+      font-size: 1.8rem; 
+      margin-bottom: 20px; 
+    }
+    .btn-login { 
+      display: block; 
+      margin: 50px auto; 
+      padding: 15px 30px; 
+      background: #1db954; 
+      color: white; 
+      border: none; 
+      border-radius: 25px; 
+      font-size: 1.2rem; 
+      font-weight: bold; 
+      cursor: pointer; 
+    }
+    .grid-container { 
+      display: grid; 
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); 
+      gap: 15px; 
+    }
+    .tile { 
+      background: #282828; 
+      border-radius: 12px; 
+      padding: 10px; 
+      text-align: center; 
+      cursor: pointer; 
+    }
+    .tile img { 
+      width: 100%; 
+      border-radius: 8px; 
+      aspect-ratio: 1/1; 
+      object-fit: cover; 
+    }
+    .tile-title { 
+      margin-top: 8px; 
+      font-size: 0.95rem; 
+      font-weight: bold; 
+      display: -webkit-box; 
+      -webkit-line-clamp: 2; 
+      -webkit-box-orient: vertical; 
+      overflow: hidden; 
+    }
+    .loading { 
+      text-align: center; 
+      color: #888; 
+      font-size: 1.2rem; 
+      margin-top: 40px; 
+    }
+  </style>
+</head>
+<body>
+
+  <h1 id="page-title">KinderPlayerPlaylist</h1>
+
+  <button id="login-btn" class="btn-login" style="display:none;" onclick="redirectToSpotify()">Einmalig bei Spotify anmelden</button>
+  <div id="loading" class="loading">Prüfe Verbindung...</div>
+  <div class="grid-container" id="kachel-grid"></div>
+
+  <script>
+    const CLIENT_ID = 'a6c7e7f802d043c29cce919b9e0c7f45'; // Hier deine Client-ID eintragen
+    const PLAYLIST_ID = '5SwgtF75qBUzNDSVKahajV';
+    const REDIRECT_URI = 'http://127.0.0.1:8000/kinderplayer_v1.5.html';
+
+    function generateRandomString(length) {
+      const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~';
+      const values = new Uint8Array(length);
+      window.crypto.getRandomValues(values);
+      return Array.from(values).map(x => possible[x % possible.length]).join('');
+    }
+
+    async function generateCodeChallenge(codeVerifier) {
+      const encoder = new TextEncoder();
+      const data = encoder.encode(codeVerifier);
+      const digest = await window.crypto.subtle.digest('SHA-256', data);
+      return btoa(String.fromCharCode(...new Uint8Array(digest)))
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=+$/, '');
+    }
+
+    async function redirectToSpotify() {
+      const verifier = generateRandomString(128);
+      const challenge = await generateCodeChallenge(verifier);
+      
+      localStorage.setItem("pkce_verifier", verifier);
+
+      const params = new URLSearchParams({
+        client_id: CLIENT_ID,
+        response_type: "code",
+        redirect_uri: REDIRECT_URI,
+        scope: "user-read-playback-state user-modify-playback-state playlist-read-private playlist-read-collaborative",
+        code_challenge_method: "S256",
+        code_challenge: challenge
+      });
+
+      document.location = `https://accounts.spotify.com/authorize?${params.toString()}`;
+    }
+
+    async function getAccessToken(code) {
+      const verifier = localStorage.getItem("pkce_verifier");
+      
+      if (!verifier) {
+        console.error("Kein PKCE Verifier gefunden.");
+        showLogin();
+        return;
+      }
+
+      const params = new URLSearchParams({
+        client_id: CLIENT_ID,
+        grant_type: "authorization_code",
+        code: code,
+        redirect_uri: REDIRECT_URI,
+        code_verifier: verifier
+      });
+
+      try {
+        const response = await fetch("https://accounts.spotify.com/api/token", {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: params
+        });
+
+        const data = await response.json();
+        
+        if (data.access_token) {
+          localStorage.setItem("access_token", data.access_token);
+          if (data.refresh_token) {
+            localStorage.setItem("refresh_token", data.refresh_token);
+          }
+          window.history.replaceState({}, document.title, REDIRECT_URI);
+          loadPlaylistTracks(data.access_token);
+        } else {
+          console.error("Spotify Fehler-Details:", data);
+          document.getElementById('loading').innerText = "Fehler: " + (data.error_description || "Token abgelehnt");
+        }
+      } catch (err) {
+        console.error("Fetch Error:", err);
+        document.getElementById('loading').innerText = "Netzwerkfehler beim Token-Tausch.";
+      }
+    }
+
+    // Angepasster Abruf über den Haupt-Playlist-Endpunkt
+async function loadPlaylistTracks(token) {
+  document.getElementById('loading').innerText = "Lade Hörspiele...";
+  document.getElementById('login-btn').style.display = 'none';
+
+  try {
+    // JETZT NEU: /items statt /tracks benutzen!
+    const res = await fetch(`https://api.spotify.com/v1/playlists/${PLAYLIST_ID}/items?limit=100`, {
+      headers: { 
+        'Authorization': `Bearer ${token}` 
+      }
+    });
+
+    if (res.status === 401) {
+      localStorage.removeItem("access_token");
+      showLogin();
+      return;
+    }
+
+    if (!res.ok) {
+      const errData = await res.json();
+      console.error("API Fehler-Details:", errData);
+      document.getElementById('loading').innerText = `Spotify Fehler ${res.status}: ${errData.error?.message || 'Zugriff verweigert'}`;
+      return;
+    }
+
+    const data = await res.json();
+    document.getElementById('loading').style.display = 'none';
+    const grid = document.getElementById('kachel-grid');
+    grid.innerHTML = '';
+
+    const items = data.items || [];
+
+    if (items.length === 0) {
+      document.getElementById('loading').style.display = 'block';
+      document.getElementById('loading').innerText = "Keine Titel in der Playlist gefunden.";
+      return;
+    }
+
+    items.forEach(item => {
+      // In der /items Antwort liegen die Daten im Attribut item.track oder item.item
+      const track = item.track || item.item || item.episode;
+      if (!track) return;
+
+      const tile = document.createElement('div');
+      tile.className = 'tile';
+tile.onclick = async () => {
+  try {
+    // Versuch 1: Wiedergabe auf dem aktuell aktiven Gerät starten
+    let playRes = await fetch("https://api.spotify.com/v1/me/player/play", {
+      method: "PUT",
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        uris: [`spotify:track:${track.id}`]
+      })
+    });
+
+    // Falls kein aktives Gerät vorhanden ist (404), verfügbare Geräte suchen
+    if (playRes.status === 404) {
+      const devicesRes = await fetch("https://api.spotify.com/v1/me/player/devices", {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+
+      if (devicesRes.ok) {
+        const devicesData = await devicesRes.json();
+        const devices = devicesData.devices || [];
+
+        if (devices.length > 0) {
+          // Nimm das erste verfügbare Gerät aus der Liste
+          const targetDeviceId = devices[0].id;
+
+          // Versuche die Wiedergabe explizit an dieses Gerät zu senden
+          playRes = await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${targetDeviceId}`, {
+            method: "PUT",
+            headers: {
+              "Authorization": `Bearer ${token}`,
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              uris: [`spotify:track:${track.id}`]
+            })
+          });
+        }
+      }
+    }
+
+    // Wenn es immer noch 404 ist (kein Gerät im Netzwerk erreichbar):
+    if (playRes.status === 404) {
+      showChildFriendlyNotice("Achtung: Spotify ist auf dem Abspielgerät nicht bereit. Bitte einmal die Spotify-App auf dem Zielgerät öffnen!");
+    } else if (!playRes.ok) {
+      const err = await playRes.json();
+      console.error("Wiedergabefehler:", err);
+    } else {
+      // Erfolg: Eventuelle alte Warnhinweise ausblenden
+      hideChildFriendlyNotice();
+    }
+
+  } catch (e) {
+    console.error("Netzwerkfehler bei Play:", e);
+  }
+};
+
+// Hilfsfunktionen für kindgerechte Hinweise in der UI (ohne Weiterleitung)
+function showChildFriendlyNotice(message) {
+  let notice = document.getElementById('player-notice');
+  if (!notice) {
+    notice = document.createElement('div');
+    notice.id = 'player-notice';
+    notice.style.cssText = 'position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #ff4d4d; color: white; padding: 12px 24px; border-radius: 20px; font-weight: bold; box-shadow: 0 4px 10px rgba(0,0,0,0.3); z-index: 1000; text-align: center;';
+    document.body.appendChild(notice);
+  }
+  notice.innerText = message;
+  notice.style.display = 'block';
+}
+
+function hideChildFriendlyNotice() {
+  const notice = document.getElementById('player-notice');
+  if (notice) notice.style.display = 'none';
+}
+
+      const imageUrl = track.album?.images[0]?.url || track.images?.[0]?.url || '';
+
+      tile.innerHTML = `
+        <img src="${imageUrl}" alt="${track.name}">
+        <div class="tile-title">${track.name}</div>
+      `;
+      grid.appendChild(tile);
+    });
+
+  } catch (err) {
+    console.error("Netzwerkfehler:", err);
+    document.getElementById('loading').innerText = "Fehler beim Laden der Tracks.";
+  }
+}
+
+    function showLogin() {
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('login-btn').style.display = 'block';
+    }
+
+    const args = new URLSearchParams(window.location.search);
+    const code = args.get("code");
+    const storedToken = localStorage.getItem("access_token");
+
+    if (code) {
+      getAccessToken(code);
+    } else if (storedToken) {
+      loadPlaylistTracks(storedToken);
+    } else {
+      showLogin();
+    }
+  </script>
+</body>
+</html>
