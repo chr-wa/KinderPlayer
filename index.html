@@ -17,12 +17,6 @@
       background-color: #121212; 
       color: #fff; 
       font-family: sans-serif; 
-      body { 
-      margin: 0; 
-      padding: 20px; 
-      background-color: #121212; 
-      color: #fff; 
-      font-family: sans-serif; 
       
       /* Verhindert Wisch-Gesten für Vor/Zurück und Pull-to-Refresh */
       overscroll-behavior: none;
@@ -105,13 +99,13 @@
 
   <script>
 
-// Erzwingt das Neuladen beim Start, um immer den neuesten Code von GitHub zu haben
-if (performance.navigation.type === 1) {
-  // Seite wurde manuell neu geladen
-} else {
-  // Bei jedem regulären App-Start frische Daten anfordern
-  fetch(window.location.href, { cache: 'reload' });
-}
+    // Erzwingt das Neuladen beim Start, um immer den neuesten Code von GitHub zu haben
+    if (performance.navigation.type === 1) {
+      // Seite wurde manuell neu geladen
+    } else {
+      // Bei jedem regulären App-Start frische Daten anfordern
+      fetch(window.location.href, { cache: 'reload' });
+    }
     
     const CLIENT_ID = 'a6c7e7f802d043c29cce919b9e0c7f45';
     const PLAYLIST_ID = '5SwgtF75qBUzNDSVKahajV';
@@ -183,7 +177,11 @@ if (performance.navigation.type === 1) {
           if (data.refresh_token) {
             localStorage.setItem("refresh_token", data.refresh_token);
           }
-          window.history.replaceState({}, document.title, REDIRECT_URI);
+          
+          // ERSETZT die Login-URL im Verlauf durch die saubere App-URL.
+          // Dadurch verschwindet die dunkle Zwischenseite komplett aus der History!
+          window.history.replaceState({}, document.title, window.location.pathname);
+          
           loadPlaylistTracks(data.access_token);
         } else {
           console.error("Spotify Fehler-Details:", data);
@@ -418,12 +416,6 @@ if (performance.navigation.type === 1) {
 
     // Prüfe alle 5 Sekunden automatisch den aktuell gespielten Titel
     setInterval(updateCurrentlyPlaying, 5000);
-
-    // Verhindert, dass die PWA durch Wischgesten eine leere Verlaufsseite anzeigt
-    window.addEventListener('popstate', function(event) {
-      window.history.pushState(null, document.title, window.location.href);
-    });
-    window.history.pushState(null, document.title, window.location.href);
     
   </script>
 </body>
