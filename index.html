@@ -262,9 +262,10 @@
                   "Authorization": `Bearer ${token}`,
                   "Content-Type": "application/json"
                 },
-                body: JSON.stringify({
-                  uris: [`spotify:track:${track.id}`]
-                })
+body: JSON.stringify({
+  context_uri: `spotify:playlist:${PLAYLIST_ID}`,
+  offset: { uri: `spotify:track:${track.id}` }
+})
               });
 
               if (playRes.status === 404) {
