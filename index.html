@@ -220,7 +220,7 @@
           }
           
           window.history.replaceState({}, document.title, window.location.pathname);
-          loadPlaylistTracks(data.access_token);
+loadCategories(data.access_token);
         } else {
           console.error("Spotify Fehler-Details:", data);
           document.getElementById('loading').innerText = "Fehler: " + (data.error_description || "Token abgelehnt");
@@ -231,6 +231,70 @@
       }
     }
 
+const PREFIX = "[KID]"; // Nach diesem Präfix in Spotify-Playlists suchen
+
+    // Hauptübersicht: Alle Playlists mit Präfix "[KID]" abrufen und als Ordner anzeigen
+    async function loadCategories(token) {
+      document.getElementById('loading').innerText = "Lade Übersichten...";
+      document.getElementById('loading').style.display = 'block';
+      document.getElementById('login-btn').style.display = 'none';
+      document.getElementById('nav-bar').style.display = 'none';
+      document.getElementById('page-title').innerText = "KinderPlayer";
+
+      const grid = document.getElementById('kachel-grid');
+      grid.innerHTML = '';
+
+      try {
+        const res = await fetch("https://api.spotify.com/v1/me/playlists?limit=50", {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (res.status === 401) {
+          localStorage.removeItem("access_token");
+          showLogin();
+          return;
+        }
+
+        const data = await res.json();
+        document.getElementById('loading').style.display = 'none';
+
+        const playlists = data.items || [];
+        
+        // Nur Playlists filtern, die mit [KID] beginnen
+        const kidPlaylists = playlists.filter(pl => pl.name && pl.name.startsWith(PREFIX));
+
+        if (kidPlaylists.length === 0) {
+          grid.innerHTML = `<p style="text-align: center; grid-column: 1/-1;">Keine Playlists mit <b>${PREFIX}</b> im Namen in Spotify gefunden!</p>`;
+          return;
+        }
+
+        kidPlaylists.forEach(pl => {
+          // "[KID] " aus dem angezeigten Titel abschneiden
+          const cleanTitle = pl.name.replace(PREFIX, '').trim();
+          const imageUrl = pl.images && pl.images.length > 0 ? pl.images[0].url : '';
+
+          const tile = document.createElement('div');
+          tile.className = 'tile';
+
+          tile.onclick = () => {
+            loadPlaylistTracks(token, pl.id, cleanTitle);
+          };
+
+          tile.innerHTML = `
+            <img src="${imageUrl}" alt="${cleanTitle}">
+            <div class="tile-title">${cleanTitle}</div>
+          `;
+          grid.appendChild(tile);
+        });
+
+        updateCurrentlyPlaying();
+
+      } catch (err) {
+        console.error("Fehler beim Laden der Kategorien:", err);
+        document.getElementById('loading').innerText = "Fehler beim Laden der Übersichten.";
+      }
+    }
+    
 async function loadPlaylistTracks(token, playlistId, title) {
   document.getElementById('loading').innerText = "Lade Folgen...";
   document.getElementById('loading').style.display = 'block';
@@ -497,12 +561,12 @@ playPauseBtn.addEventListener('click', async () => {
     const storedToken = localStorage.getItem("access_token");
 
     if (code) {
-      getAccessToken(code);
-    } else if (storedToken) {
-      loadPlaylistTracks(storedToken);
-    } else {
-      showLogin();
-    }
+  getAccessToken(code);
+} else if (storedToken) {
+  loadCategories(storedToken);
+} else {
+  showLogin();
+}
 
     // Prüfe alle 5 Sekunden automatisch den aktuell gespielten Titel
     setInterval(updateCurrentlyPlaying, 5000);
@@ -525,6 +589,12 @@ function setPlayPauseIcon(isPlaying) {
     pauseIcon.style.display = isPlaying ? 'block' : 'none';
   }
 }
+
+// Zurück zur Übersicht-Button Listener
+    document.getElementById('back-to-main-btn').addEventListener('click', () => {
+      const token = localStorage.getItem("access_token");
+      if (token) loadCategories(token);
+    });
     
     preventAppCloseInPinning();
 
