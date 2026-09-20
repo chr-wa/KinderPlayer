@@ -10,18 +10,6 @@
       box-sizing: border-box; 
       user-select: none; 
       -webkit-user-select: none; 
-    }<!DOCTYPE html>
-<html lang="de">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>Kinder Player</title>
-  <link rel="manifest" href="manifest.json">
-  <style>
-    * { 
-      box-sizing: border-box; 
-      user-select: none; 
-      -webkit-user-select: none; 
     }
     body { 
       margin: 0; 
@@ -29,8 +17,6 @@
       background-color: #121212; 
       color: #fff; 
       font-family: sans-serif; 
-      
-      /* Verhindert Wisch-Gesten für Vor/Zurück und Pull-to-Refresh */
       overscroll-behavior: none;
       touch-action: pan-y;
     }
@@ -96,7 +82,6 @@
   </style>
 </head>
 <body>
-<body>
 
   <!-- Fixierte Player-Controls ganz oben -->
   <div id="player-controls" style="display: none; position: sticky; top: 10px; z-index: 100; background: rgba(24, 24, 24, 0.95); backdrop-filter: blur(8px); padding: 10px 20px; border-radius: 30px; margin: 0 auto 20px auto; max-width: 280px; text-align: center; box-shadow: 0 6px 16px rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.1);">
@@ -132,19 +117,21 @@
   <div class="grid-container" id="kachel-grid"></div>
 
   <div id="app-version" style="text-align: center; color: #555; font-size: 0.8rem; margin: 30px 0 10px 0;"></div>
+
   <script>
+    // Service Worker registrieren (falls sw.js vorhanden)
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW Reg Fehler:', err));
+    }
 
     // Erzwingt das Neuladen beim Start, um immer den neuesten Code von GitHub zu haben
-    if (performance.navigation.type === 1) {
-      // Seite wurde manuell neu geladen
-    } else {
-      // Bei jedem regulären App-Start frische Daten anfordern
+    if (performance.navigation.type !== 1) {
       fetch(window.location.href, { cache: 'reload' });
     }
     
     const CLIENT_ID = 'a6c7e7f802d043c29cce919b9e0c7f45';
-    const PLAYLIST_ID = '5SwgtF75qBUzNDSVKahajV';
     const REDIRECT_URI = 'https://chr-wa.github.io/KinderPlayer/';
+    const PREFIX = "[KID]"; // Nach diesem Präfix in Spotify-Playlists suchen
 
     function generateRandomString(length) {
       const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~';
@@ -214,7 +201,7 @@
           }
           
           window.history.replaceState({}, document.title, window.location.pathname);
-loadCategories(data.access_token);
+          loadCategories(data.access_token);
         } else {
           console.error("Spotify Fehler-Details:", data);
           document.getElementById('loading').innerText = "Fehler: " + (data.error_description || "Token abgelehnt");
@@ -224,8 +211,6 @@ loadCategories(data.access_token);
         document.getElementById('loading').innerText = "Netzwerkfehler beim Token-Tausch.";
       }
     }
-
-const PREFIX = "[KID]"; // Nach diesem Präfix in Spotify-Playlists suchen
 
     // Hauptübersicht: Alle Playlists mit Präfix "[KID]" abrufen und als Ordner anzeigen
     async function loadCategories(token) {
@@ -253,8 +238,6 @@ const PREFIX = "[KID]"; // Nach diesem Präfix in Spotify-Playlists suchen
         document.getElementById('loading').style.display = 'none';
 
         const playlists = data.items || [];
-        
-        // Nur Playlists filtern, die mit [KID] beginnen
         const kidPlaylists = playlists.filter(pl => pl.name && pl.name.startsWith(PREFIX));
 
         if (kidPlaylists.length === 0) {
@@ -263,7 +246,6 @@ const PREFIX = "[KID]"; // Nach diesem Präfix in Spotify-Playlists suchen
         }
 
         kidPlaylists.forEach(pl => {
-          // "[KID] " aus dem angezeigten Titel abschneiden
           const cleanTitle = pl.name.replace(PREFIX, '').trim();
           const imageUrl = pl.images && pl.images.length > 0 ? pl.images[0].url : '';
 
@@ -289,130 +271,127 @@ const PREFIX = "[KID]"; // Nach diesem Präfix in Spotify-Playlists suchen
       }
     }
     
-async function loadPlaylistTracks(token, playlistId, title) {
-  document.getElementById('loading').innerText = "Lade Folgen...";
-  document.getElementById('loading').style.display = 'block';
-  document.getElementById('login-btn').style.display = 'none';
-  document.getElementById('kachel-grid').innerHTML = '';
-
-  // Zurück-Button anzeigen & Überschrift anpassen
-  document.getElementById('nav-bar').style.display = 'block';
-  document.getElementById('page-title').innerText = title;
-
-  try {
-    const res = await fetch(`https://api.spotify.com/v1/playlists/${playlistId}/items?limit=100`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
-
-    if (res.status === 401) {
-      localStorage.removeItem("access_token");
-      showLogin();
-      return;
-    }
-
-    if (!res.ok) {
-      const errData = await res.json();
-      console.error("API Fehler-Details:", errData);
-      document.getElementById('loading').innerText = `Spotify Fehler ${res.status}: ${errData.error?.message || 'Zugriff verweigert'}`;
-      return;
-    }
-
-    const data = await res.json();
-    document.getElementById('loading').style.display = 'none';
-    document.getElementById('player-controls').style.display = 'block';
-
-    const grid = document.getElementById('kachel-grid');
-    grid.innerHTML = '';
-
-    const items = data.items || [];
-
-    if (items.length === 0) {
+    async function loadPlaylistTracks(token, playlistId, title) {
+      document.getElementById('loading').innerText = "Lade Folgen...";
       document.getElementById('loading').style.display = 'block';
-      document.getElementById('loading').innerText = "Keine Titel in dieser Playlist gefunden.";
-      return;
-    }
+      document.getElementById('login-btn').style.display = 'none';
+      document.getElementById('kachel-grid').innerHTML = '';
 
-    items.forEach(item => {
-      const track = item.track || item.item || item.episode;
-      if (!track) return;
+      document.getElementById('nav-bar').style.display = 'block';
+      document.getElementById('page-title').innerText = title;
 
-      const tile = document.createElement('div');
-      tile.className = 'tile';
-      tile.dataset.trackId = track.id;
+      try {
+        const res = await fetch(`https://api.spotify.com/v1/playlists/${playlistId}/items?limit=100`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
 
-      tile.onclick = async () => {
-        try {
-          // Payload mit dynamischer playlistId
-          const playPayload = {
-            context_uri: `spotify:playlist:${playlistId}`,
-            offset: { uri: `spotify:track:${track.id}` }
+        if (res.status === 401) {
+          localStorage.removeItem("access_token");
+          showLogin();
+          return;
+        }
+
+        if (!res.ok) {
+          const errData = await res.json();
+          console.error("API Fehler-Details:", errData);
+          document.getElementById('loading').innerText = `Spotify Fehler ${res.status}: ${errData.error?.message || 'Zugriff verweigert'}`;
+          return;
+        }
+
+        const data = await res.json();
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('player-controls').style.display = 'block';
+
+        const grid = document.getElementById('kachel-grid');
+        grid.innerHTML = '';
+
+        const items = data.items || [];
+
+        if (items.length === 0) {
+          document.getElementById('loading').style.display = 'block';
+          document.getElementById('loading').innerText = "Keine Titel in dieser Playlist gefunden.";
+          return;
+        }
+
+        items.forEach(item => {
+          const track = item.track || item.item || item.episode;
+          if (!track) return;
+
+          const tile = document.createElement('div');
+          tile.className = 'tile';
+          tile.dataset.trackId = track.id;
+
+          tile.onclick = async () => {
+            try {
+              const playPayload = {
+                context_uri: `spotify:playlist:${playlistId}`,
+                offset: { uri: `spotify:track:${track.id}` }
+              };
+
+              let playRes = await fetch("https://api.spotify.com/v1/me/player/play", {
+                method: "PUT",
+                headers: {
+                  "Authorization": `Bearer ${token}`,
+                  "Content-Type": "application/json"
+                },
+                body: JSON.stringify(playPayload)
+              });
+
+              if (playRes.status === 404) {
+                const devicesRes = await fetch("https://api.spotify.com/v1/me/player/devices", {
+                  headers: { "Authorization": `Bearer ${token}` }
+                });
+
+                if (devicesRes.ok) {
+                  const devicesData = await devicesRes.json();
+                  const devices = devicesData.devices || [];
+
+                  if (devices.length > 0) {
+                    const targetDeviceId = devices[0].id;
+
+                    playRes = await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${targetDeviceId}`, {
+                      method: "PUT",
+                      headers: {
+                        "Authorization": `Bearer ${token}`,
+                        "Content-Type": "application/json"
+                      },
+                      body: JSON.stringify(playPayload)
+                    });
+                  }
+                }
+              }
+
+              if (playRes.status === 404) {
+                showChildFriendlyNotice("Achtung: Spotify ist auf dem Abspielgerät nicht bereit. Bitte einmal die Spotify-App auf dem Zielgerät öffnen!");
+              } else if (!playRes.ok) {
+                const err = await playRes.json();
+                console.error("Wiedergabefehler:", err);
+              } else {
+                hideChildFriendlyNotice();
+                setTimeout(updateCurrentlyPlaying, 500);
+              }
+
+            } catch (e) {
+              console.error("Netzwerkfehler bei Play:", e);
+            }
           };
 
-          let playRes = await fetch("https://api.spotify.com/v1/me/player/play", {
-            method: "PUT",
-            headers: {
-              "Authorization": `Bearer ${token}`,
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify(playPayload)
-          });
+          const imageUrl = track.album?.images[0]?.url || track.images?.[0]?.url || '';
 
-          // Fallback: Wenn kein aktiver Player gefunden wurde, erstes Device in Liste suchen
-          if (playRes.status === 404) {
-            const devicesRes = await fetch("https://api.spotify.com/v1/me/player/devices", {
-              headers: { "Authorization": `Bearer ${token}` }
-            });
+          tile.innerHTML = `
+            <img src="${imageUrl}" alt="${track.name}">
+            <div class="tile-title">${track.name}</div>
+          `;
+          grid.appendChild(tile);
+        });
 
-            if (devicesRes.ok) {
-              const devicesData = await devicesRes.json();
-              const devices = devicesData.devices || [];
+        updateCurrentlyPlaying();
 
-              if (devices.length > 0) {
-                const targetDeviceId = devices[0].id;
-
-                playRes = await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${targetDeviceId}`, {
-                  method: "PUT",
-                  headers: {
-                    "Authorization": `Bearer ${token}`,
-                    "Content-Type": "application/json"
-                  },
-                  body: JSON.stringify(playPayload)
-                });
-              }
-            }
-          }
-
-          if (playRes.status === 404) {
-            showChildFriendlyNotice("Achtung: Spotify ist auf dem Abspielgerät nicht bereit. Bitte einmal die Spotify-App auf dem Zielgerät öffnen!");
-          } else if (!playRes.ok) {
-            const err = await playRes.json();
-            console.error("Wiedergabefehler:", err);
-          } else {
-            hideChildFriendlyNotice();
-            setTimeout(updateCurrentlyPlaying, 500);
-          }
-
-        } catch (e) {
-          console.error("Netzwerkfehler bei Play:", e);
-        }
-      };
-
-      const imageUrl = track.album?.images[0]?.url || track.images?.[0]?.url || '';
-
-      tile.innerHTML = `
-        <img src="${imageUrl}" alt="${track.name}">
-        <div class="tile-title">${track.name}</div>
-      `;
-      grid.appendChild(tile);
-    });
-
-    updateCurrentlyPlaying();
-
-  } catch (err) {
-    console.error("Netzwerkfehler:", err);
-    document.getElementById('loading').innerText = "Fehler beim Laden der Tracks.";
-  }
-}
+      } catch (err) {
+        console.error("Netzwerkfehler:", err);
+        document.getElementById('loading').innerText = "Fehler beim Laden der Tracks.";
+      }
+    }
 
     function markActiveTile(playingTrackId) {
       const tiles = document.querySelectorAll('.tile');
@@ -425,35 +404,31 @@ async function loadPlaylistTracks(token, playlistId, title) {
       });
     }
 
-    // Erweitere Status-Abfrage für dynamisches Play/Pause Icon
-async function updateCurrentlyPlaying() {
-  const token = localStorage.getItem("access_token");
-  if (!token) return;
+    async function updateCurrentlyPlaying() {
+      const token = localStorage.getItem("access_token");
+      if (!token) return;
 
-  try {
-    const res = await fetch("https://api.spotify.com/v1/me/player", {
-      headers: { "Authorization": `Bearer ${token}` }
-    });
+      try {
+        const res = await fetch("https://api.spotify.com/v1/me/player", {
+          headers: { "Authorization": `Bearer ${token}` }
+        });
 
-    if (res.status === 200) {
-      const data = await res.json();
-      document.getElementById('player-controls').style.display = 'block';
+        if (res.status === 200) {
+          const data = await res.json();
+          document.getElementById('player-controls').style.display = 'block';
+          setPlayPauseIcon(data.is_playing);
 
-      // SVG-Icon passend zum Wiedergabestatus einstellen (Play oder Pause)
-      setPlayPauseIcon(data.is_playing);
-
-      if (data.item) {
-        markActiveTile(data.item.id);
+          if (data.item) {
+            markActiveTile(data.item.id);
+          }
+        } else if (res.status === 204) {
+          setPlayPauseIcon(false);
+          markActiveTile(null);
+        }
+      } catch (e) {
+        console.error("Fehler beim Abrufen des Player-Status:", e);
       }
-    } else if (res.status === 204) {
-      // Wenn aktuell nichts wiedergegeben wird
-      setPlayPauseIcon(false);
-      markActiveTile(null);
     }
-  } catch (e) {
-    console.error("Fehler beim Abrufen des Player-Status:", e);
-  }
-}
 
     function showChildFriendlyNotice(message) {
       let notice = document.getElementById('player-notice');
@@ -483,41 +458,36 @@ async function updateCurrentlyPlaying() {
     const prevBtn = document.getElementById('prev-btn');
     const nextBtn = document.getElementById('next-btn');
 
-    // Play / Pause
-playPauseBtn.addEventListener('click', async () => {
-  const token = localStorage.getItem("access_token");
-  if (!token) return;
+    playPauseBtn.addEventListener('click', async () => {
+      const token = localStorage.getItem("access_token");
+      if (!token) return;
 
-  try {
-    const stateRes = await fetch("https://api.spotify.com/v1/me/player", {
-      headers: { "Authorization": `Bearer ${token}` }
+      try {
+        const stateRes = await fetch("https://api.spotify.com/v1/me/player", {
+          headers: { "Authorization": `Bearer ${token}` }
+        });
+
+        if (stateRes.status === 200) {
+          const playerState = await stateRes.json();
+          const isCurrentlyPlaying = playerState.is_playing;
+          const endpoint = isCurrentlyPlaying ? "pause" : "play";
+          
+          await fetch(`https://api.spotify.com/v1/me/player/${endpoint}`, {
+            method: "PUT",
+            headers: { "Authorization": `Bearer ${token}` }
+          });
+
+          setPlayPauseIcon(!isCurrentlyPlaying);
+          setTimeout(updateCurrentlyPlaying, 500);
+
+        } else if (stateRes.status === 204 || stateRes.status === 404) {
+          showChildFriendlyNotice("Kein aktiver Player gefunden. Bitte erst ein Lied über eine Kachel starten!");
+        }
+      } catch (e) {
+        console.error("Fehler beim Steuern der Wiedergabe:", e);
+      }
     });
 
-    if (stateRes.status === 200) {
-      const playerState = await stateRes.json();
-      const isCurrentlyPlaying = playerState.is_playing;
-      const endpoint = isCurrentlyPlaying ? "pause" : "play";
-      
-      await fetch(`https://api.spotify.com/v1/me/player/${endpoint}`, {
-        method: "PUT",
-        headers: { "Authorization": `Bearer ${token}` }
-      });
-
-      // Sofortiges optisches Feedback über die SVG-Funktion
-      // (Wenn es lief, schalten wir sofort auf Play-Icon, sonst auf Pause-Icon)
-      setPlayPauseIcon(!isCurrentlyPlaying);
-      
-      // Status nach kurzer Zeit von Spotify bestätigen lassen
-      setTimeout(updateCurrentlyPlaying, 500);
-
-    } else if (stateRes.status === 204 || stateRes.status === 404) {
-      showChildFriendlyNotice("Kein aktiver Player gefunden. Bitte erst ein Lied über eine Kachel starten!");
-    }
-  } catch (e) {
-    console.error("Fehler beim Steuern der Wiedergabe:", e);
-  }
-});
-    // Zurück
     prevBtn.addEventListener('click', async () => {
       const token = localStorage.getItem("access_token");
       if (!token) return;
@@ -533,7 +503,6 @@ playPauseBtn.addEventListener('click', async () => {
       }
     });
 
-    // Weiter
     nextBtn.addEventListener('click', async () => {
       const token = localStorage.getItem("access_token");
       if (!token) return;
@@ -555,17 +524,15 @@ playPauseBtn.addEventListener('click', async () => {
     const storedToken = localStorage.getItem("access_token");
 
     if (code) {
-  getAccessToken(code);
-} else if (storedToken) {
-  loadCategories(storedToken);
-} else {
-  showLogin();
-}
+      getAccessToken(code);
+    } else if (storedToken) {
+      loadCategories(storedToken);
+    } else {
+      showLogin();
+    }
 
-    // Prüfe alle 5 Sekunden automatisch den aktuell gespielten Titel
     setInterval(updateCurrentlyPlaying, 5000);
 
-    // Verhindert das Landen auf der leeren/dunklen Seite im fixierten Modus
     function preventAppCloseInPinning() {
       window.history.pushState({ page: 'home' }, '', window.location.href);
 
@@ -574,17 +541,16 @@ playPauseBtn.addEventListener('click', async () => {
       });
     }
 
-function setPlayPauseIcon(isPlaying) {
-  const playIcon = document.getElementById('play-icon');
-  const pauseIcon = document.getElementById('pause-icon');
-  
-  if (playIcon && pauseIcon) {
-    playIcon.style.display = isPlaying ? 'none' : 'block';
-    pauseIcon.style.display = isPlaying ? 'block' : 'none';
-  }
-}
+    function setPlayPauseIcon(isPlaying) {
+      const playIcon = document.getElementById('play-icon');
+      const pauseIcon = document.getElementById('pause-icon');
+      
+      if (playIcon && pauseIcon) {
+        playIcon.style.display = isPlaying ? 'none' : 'block';
+        pauseIcon.style.display = isPlaying ? 'block' : 'none';
+      }
+    }
 
-// Zurück zur Übersicht-Button Listener
     document.getElementById('back-to-main-btn').addEventListener('click', () => {
       const token = localStorage.getItem("access_token");
       if (token) loadCategories(token);
@@ -592,7 +558,6 @@ function setPlayPauseIcon(isPlaying) {
     
     preventAppCloseInPinning();
 
-    // Zeitstempel der letzten Dateiänderung auf dem Server anzeigen
     function renderLastModified() {
       const versionEl = document.getElementById('app-version');
       if (versionEl) {
@@ -610,7 +575,6 @@ function setPlayPauseIcon(isPlaying) {
     }
 
     renderLastModified();
-
   </script>
 </body>
 </html>
