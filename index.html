@@ -97,6 +97,8 @@
   <div id="loading" class="loading">Prüfe Verbindung...</div>
   <div class="grid-container" id="kachel-grid"></div>
 
+<div id="app-version" style="text-align: center; color: #555; font-size: 0.8rem; margin: 30px 0 10px 0;"></div>
+  
   <script>
 
     // Erzwingt das Neuladen beim Start, um immer den neuesten Code von GitHub zu haben
@@ -416,6 +418,40 @@
 
     // Prüfe alle 5 Sekunden automatisch den aktuell gespielten Titel
     setInterval(updateCurrentlyPlaying, 5000);
+
+// Verhindert das Landen auf der leeren/dunklen Seite im fixierten Modus
+    function preventAppCloseInPinning() {
+      // Setzt einen künstlichen Anker in den Verlauf
+      window.history.pushState({ page: 'home' }, '', window.location.href);
+
+      window.addEventListener('popstate', function (event) {
+        // Wenn der Nutzer auf der Hauptseite 'Zurück' drückt, erneuern wir den Anker sofort
+        window.history.pushState({ page: 'home' }, '', window.location.href);
+      });
+    }
+
+    // Funktion beim Start ausführen
+    preventAppCloseInPinning();
+
+// Zeitstempel der letzten Dateiänderung auf dem Server anzeigen
+function renderLastModified() {
+  const versionEl = document.getElementById('app-version');
+  if (versionEl) {
+    const lastModified = new Date(document.lastModified);
+    const formattedDate = lastModified.toLocaleString('de-DE', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+
+    versionEl.innerText = `Stand: ${formattedDate} Uhr`;
+  }
+}
+
+// Beim Aufruf der Seite ausführen
+renderLastModified();
     
   </script>
 </body>
