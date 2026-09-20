@@ -99,12 +99,26 @@
 
   <h1 id="page-title">KinderPlayer</h1>
 
- <!-- Fixierte Player-Controls ganz oben -->
+<!-- Fixierte Player-Controls ganz oben -->
   <div id="player-controls" style="display: none; position: sticky; top: 10px; z-index: 100; background: rgba(24, 24, 24, 0.95); backdrop-filter: blur(8px); padding: 10px 20px; border-radius: 30px; margin: 0 auto 20px auto; max-width: 280px; text-align: center; box-shadow: 0 6px 16px rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.1);">
     <div style="display: flex; align-items: center; justify-content: center; gap: 20px;">
-      <button id="prev-btn" style="background: none; border: none; color: white; font-size: 26px; cursor: pointer; padding: 5px;">⏮</button>
-      <button id="play-pause-btn" style="background: #1DB954; border: none; color: white; width: 48px; height: 48px; border-radius: 50%; font-size: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center;">▶</button>
-      <button id="next-btn" style="background: none; border: none; color: white; font-size: 26px; cursor: pointer; padding: 5px;">⏭</button>
+      <!-- Zurück -->
+      <button id="prev-btn" style="background: none; border: none; color: white; cursor: pointer; padding: 5px; display: flex; align-items: center;">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
+      </button>
+      
+      <!-- Play / Pause -->
+      <button id="play-pause-btn" style="background: #1DB954; border: none; color: white; width: 48px; height: 48px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0;">
+        <!-- Standard: Play Icon -->
+        <svg id="play-icon" width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+        <!-- Pause Icon (standardmäßig versteckt) -->
+        <svg id="pause-icon" width="22" height="22" viewBox="0 0 24 24" fill="currentColor" style="display: none;"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+      </button>
+
+      <!-- Weiter -->
+      <button id="next-btn" style="background: none; border: none; color: white; cursor: pointer; padding: 5px; display: flex; align-items: center;">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
+      </button>
     </div>
   </div>
 
@@ -338,33 +352,34 @@ body: JSON.stringify({
     }
 
     // Erweitere Status-Abfrage für dynamisches Play/Pause Icon
-    async function updateCurrentlyPlaying() {
-      const token = localStorage.getItem("access_token");
-      if (!token) return;
+async function updateCurrentlyPlaying() {
+  const token = localStorage.getItem("access_token");
+  if (!token) return;
 
-      try {
-        const res = await fetch("https://api.spotify.com/v1/me/player", {
-          headers: { "Authorization": `Bearer ${token}` }
-        });
+  try {
+    const res = await fetch("https://api.spotify.com/v1/me/player", {
+      headers: { "Authorization": `Bearer ${token}` }
+    });
 
-        if (res.status === 200) {
-          const data = await res.json();
-          document.getElementById('player-controls').style.display = 'block';
+    if (res.status === 200) {
+      const data = await res.json();
+      document.getElementById('player-controls').style.display = 'block';
 
-          // Icon anpassen: Zeige ⏸ wenn es läuft, sonst ▶
-          playPauseBtn.innerText = data.is_playing ? "⏸\uFE0E" : "▶\uFE0E";
+      // SVG-Icon passend zum Wiedergabestatus einstellen (Play oder Pause)
+      setPlayPauseIcon(data.is_playing);
 
-          if (data.item) {
-            markActiveTile(data.item.id);
-          }
-        } else if (res.status === 204) {
-          playPauseBtn.innerText = "▶";
-          markActiveTile(null);
-        }
-      } catch (e) {
-        console.error("Fehler beim Abrufen des Player-Status:", e);
+      if (data.item) {
+        markActiveTile(data.item.id);
       }
+    } else if (res.status === 204) {
+      // Wenn aktuell nichts wiedergegeben wird
+      setPlayPauseIcon(false);
+      markActiveTile(null);
     }
+  } catch (e) {
+    console.error("Fehler beim Abrufen des Player-Status:", e);
+  }
+}
 
     function showChildFriendlyNotice(message) {
       let notice = document.getElementById('player-notice');
@@ -395,36 +410,39 @@ body: JSON.stringify({
     const nextBtn = document.getElementById('next-btn');
 
     // Play / Pause
-    playPauseBtn.addEventListener('click', async () => {
-      const token = localStorage.getItem("access_token");
-      if (!token) return;
+playPauseBtn.addEventListener('click', async () => {
+  const token = localStorage.getItem("access_token");
+  if (!token) return;
 
-      try {
-        const stateRes = await fetch("https://api.spotify.com/v1/me/player", {
-          headers: { "Authorization": `Bearer ${token}` }
-        });
-
-        if (stateRes.status === 200) {
-          const playerState = await stateRes.json();
-          const endpoint = playerState.is_playing ? "pause" : "play";
-          
-          await fetch(`https://api.spotify.com/v1/me/player/${endpoint}`, {
-            method: "PUT",
-            headers: { "Authorization": `Bearer ${token}` }
-          });
-
-          // Sofortiges optisches Feedback
-          playPauseBtn.innerText = data.is_playing ? "⏸\uFE0E" : "▶\uFE0E";
-          setTimeout(updateCurrentlyPlaying, 500);
-
-        } else if (stateRes.status === 204 || stateRes.status === 404) {
-          showChildFriendlyNotice("Kein aktiver Player gefunden. Bitte erst ein Lied über eine Kachel starten!");
-        }
-      } catch (e) {
-        console.error("Fehler beim Steuern der Wiedergabe:", e);
-      }
+  try {
+    const stateRes = await fetch("https://api.spotify.com/v1/me/player", {
+      headers: { "Authorization": `Bearer ${token}` }
     });
 
+    if (stateRes.status === 200) {
+      const playerState = await stateRes.json();
+      const isCurrentlyPlaying = playerState.is_playing;
+      const endpoint = isCurrentlyPlaying ? "pause" : "play";
+      
+      await fetch(`https://api.spotify.com/v1/me/player/${endpoint}`, {
+        method: "PUT",
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+
+      // Sofortiges optisches Feedback über die SVG-Funktion
+      // (Wenn es lief, schalten wir sofort auf Play-Icon, sonst auf Pause-Icon)
+      setPlayPauseIcon(!isCurrentlyPlaying);
+      
+      // Status nach kurzer Zeit von Spotify bestätigen lassen
+      setTimeout(updateCurrentlyPlaying, 500);
+
+    } else if (stateRes.status === 204 || stateRes.status === 404) {
+      showChildFriendlyNotice("Kein aktiver Player gefunden. Bitte erst ein Lied über eine Kachel starten!");
+    }
+  } catch (e) {
+    console.error("Fehler beim Steuern der Wiedergabe:", e);
+  }
+});
     // Zurück
     prevBtn.addEventListener('click', async () => {
       const token = localStorage.getItem("access_token");
@@ -482,6 +500,16 @@ body: JSON.stringify({
       });
     }
 
+function setPlayPauseIcon(isPlaying) {
+  const playIcon = document.getElementById('play-icon');
+  const pauseIcon = document.getElementById('pause-icon');
+  
+  if (playIcon && pauseIcon) {
+    playIcon.style.display = isPlaying ? 'none' : 'block';
+    pauseIcon.style.display = isPlaying ? 'block' : 'none';
+  }
+}
+    
     preventAppCloseInPinning();
 
     // Zeitstempel der letzten Dateiänderung auf dem Server anzeigen
