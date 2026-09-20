@@ -109,9 +109,7 @@
       
       <!-- Play / Pause -->
       <button id="play-pause-btn" style="background: #1DB954; border: none; color: white; width: 48px; height: 48px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0;">
-        <!-- Standard: Play Icon -->
         <svg id="play-icon" width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-        <!-- Pause Icon (standardmäßig versteckt) -->
         <svg id="pause-icon" width="22" height="22" viewBox="0 0 24 24" fill="currentColor" style="display: none;"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
       </button>
 
@@ -121,6 +119,18 @@
       </button>
     </div>
   </div>
+
+  <!-- Navigation für Unterseiten (Zurück-Button) -->
+  <div id="nav-bar" style="display: none; text-align: center; margin: 15px 0 25px 0;">
+    <button id="back-to-main-btn" style="background: #282828; color: white; border: 1px solid rgba(255,255,255,0.2); padding: 12px 24px; border-radius: 25px; font-size: 1rem; font-weight: bold; cursor: pointer; display: inline-flex; align-items: center; gap: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.3);">
+      ⬅️ Zurück zur Übersicht
+    </button>
+  </div>
+
+  <h1 id="page-title" style="text-align: center; font-size: 1.5rem; margin-bottom: 20px;">KinderPlayer</h1>
+
+  <!-- Kachel-Grid -->
+  <div id="kachel-grid" class="grid"></div>
 
   <button id="login-btn" class="btn-login" style="display:none;" onclick="redirectToSpotify()">Einmalig bei Spotify anmelden</button>
   <div id="loading" class="loading">Prüfe Verbindung...</div>
@@ -221,124 +231,130 @@
       }
     }
 
-    async function loadPlaylistTracks(token) {
-      document.getElementById('loading').innerText = "Lade Titel...";
-      document.getElementById('login-btn').style.display = 'none';
+async function loadPlaylistTracks(token, playlistId, title) {
+  document.getElementById('loading').innerText = "Lade Folgen...";
+  document.getElementById('loading').style.display = 'block';
+  document.getElementById('login-btn').style.display = 'none';
+  document.getElementById('kachel-grid').innerHTML = '';
 
-      try {
-        const res = await fetch(`https://api.spotify.com/v1/playlists/${PLAYLIST_ID}/items?limit=100`, {
-          headers: { 
-            'Authorization': `Bearer ${token}` 
-          }
-        });
+  // Zurück-Button anzeigen & Überschrift anpassen
+  document.getElementById('nav-bar').style.display = 'block';
+  document.getElementById('page-title').innerText = title;
 
-        if (res.status === 401) {
-          localStorage.removeItem("access_token");
-          showLogin();
-          return;
-        }
+  try {
+    const res = await fetch(`https://api.spotify.com/v1/playlists/${playlistId}/items?limit=100`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
 
-        if (!res.ok) {
-          const errData = await res.json();
-          console.error("API Fehler-Details:", errData);
-          document.getElementById('loading').innerText = `Spotify Fehler ${res.status}: ${errData.error?.message || 'Zugriff verweigert'}`;
-          return;
-        }
+    if (res.status === 401) {
+      localStorage.removeItem("access_token");
+      showLogin();
+      return;
+    }
 
-        const data = await res.json();
-        document.getElementById('loading').style.display = 'none';
-        document.getElementById('player-controls').style.display = 'block';
+    if (!res.ok) {
+      const errData = await res.json();
+      console.error("API Fehler-Details:", errData);
+      document.getElementById('loading').innerText = `Spotify Fehler ${res.status}: ${errData.error?.message || 'Zugriff verweigert'}`;
+      return;
+    }
 
-        const grid = document.getElementById('kachel-grid');
-        grid.innerHTML = '';
+    const data = await res.json();
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('player-controls').style.display = 'block';
 
-        const items = data.items || [];
+    const grid = document.getElementById('kachel-grid');
+    grid.innerHTML = '';
 
-        if (items.length === 0) {
-          document.getElementById('loading').style.display = 'block';
-          document.getElementById('loading').innerText = "Keine Titel in der Playlist gefunden.";
-          return;
-        }
+    const items = data.items || [];
 
-        items.forEach(item => {
-          const track = item.track || item.item || item.episode;
-          if (!track) return;
+    if (items.length === 0) {
+      document.getElementById('loading').style.display = 'block';
+      document.getElementById('loading').innerText = "Keine Titel in dieser Playlist gefunden.";
+      return;
+    }
 
-          const tile = document.createElement('div');
-          tile.className = 'tile';
-          tile.dataset.trackId = track.id;
+    items.forEach(item => {
+      const track = item.track || item.item || item.episode;
+      if (!track) return;
 
-          tile.onclick = async () => {
-            try {
-              let playRes = await fetch("https://api.spotify.com/v1/me/player/play", {
-                method: "PUT",
-                headers: {
-                  "Authorization": `Bearer ${token}`,
-                  "Content-Type": "application/json"
-                },
-body: JSON.stringify({
-  context_uri: `spotify:playlist:${PLAYLIST_ID}`,
-  offset: { uri: `spotify:track:${track.id}` }
-})
-              });
+      const tile = document.createElement('div');
+      tile.className = 'tile';
+      tile.dataset.trackId = track.id;
 
-              if (playRes.status === 404) {
-                const devicesRes = await fetch("https://api.spotify.com/v1/me/player/devices", {
-                  headers: { "Authorization": `Bearer ${token}` }
-                });
-
-                if (devicesRes.ok) {
-                  const devicesData = await devicesRes.json();
-                  const devices = devicesData.devices || [];
-
-                  if (devices.length > 0) {
-                    const targetDeviceId = devices[0].id;
-
-                    playRes = await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${targetDeviceId}`, {
-                      method: "PUT",
-                      headers: {
-                        "Authorization": `Bearer ${token}`,
-                        "Content-Type": "application/json"
-                      },
-                      body: JSON.stringify({
-                        uris: [`spotify:track:${track.id}`]
-                      })
-                    });
-                  }
-                }
-              }
-
-              if (playRes.status === 404) {
-                showChildFriendlyNotice("Achtung: Spotify ist auf dem Abspielgerät nicht bereit. Bitte einmal die Spotify-App auf dem Zielgerät öffnen!");
-              } else if (!playRes.ok) {
-                const err = await playRes.json();
-                console.error("Wiedergabefehler:", err);
-              } else {
-                hideChildFriendlyNotice();
-                setTimeout(updateCurrentlyPlaying, 500);
-              }
-
-            } catch (e) {
-              console.error("Netzwerkfehler bei Play:", e);
-            }
+      tile.onclick = async () => {
+        try {
+          // Payload mit dynamischer playlistId
+          const playPayload = {
+            context_uri: `spotify:playlist:${playlistId}`,
+            offset: { uri: `spotify:track:${track.id}` }
           };
 
-          const imageUrl = track.album?.images[0]?.url || track.images?.[0]?.url || '';
+          let playRes = await fetch("https://api.spotify.com/v1/me/player/play", {
+            method: "PUT",
+            headers: {
+              "Authorization": `Bearer ${token}`,
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify(playPayload)
+          });
 
-          tile.innerHTML = `
-            <img src="${imageUrl}" alt="${track.name}">
-            <div class="tile-title">${track.name}</div>
-          `;
-          grid.appendChild(tile);
-        });
+          // Fallback: Wenn kein aktiver Player gefunden wurde, erstes Device in Liste suchen
+          if (playRes.status === 404) {
+            const devicesRes = await fetch("https://api.spotify.com/v1/me/player/devices", {
+              headers: { "Authorization": `Bearer ${token}` }
+            });
 
-        updateCurrentlyPlaying();
+            if (devicesRes.ok) {
+              const devicesData = await devicesRes.json();
+              const devices = devicesData.devices || [];
 
-      } catch (err) {
-        console.error("Netzwerkfehler:", err);
-        document.getElementById('loading').innerText = "Fehler beim Laden der Tracks.";
-      }
-    }
+              if (devices.length > 0) {
+                const targetDeviceId = devices[0].id;
+
+                playRes = await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${targetDeviceId}`, {
+                  method: "PUT",
+                  headers: {
+                    "Authorization": `Bearer ${token}`,
+                    "Content-Type": "application/json"
+                  },
+                  body: JSON.stringify(playPayload)
+                });
+              }
+            }
+          }
+
+          if (playRes.status === 404) {
+            showChildFriendlyNotice("Achtung: Spotify ist auf dem Abspielgerät nicht bereit. Bitte einmal die Spotify-App auf dem Zielgerät öffnen!");
+          } else if (!playRes.ok) {
+            const err = await playRes.json();
+            console.error("Wiedergabefehler:", err);
+          } else {
+            hideChildFriendlyNotice();
+            setTimeout(updateCurrentlyPlaying, 500);
+          }
+
+        } catch (e) {
+          console.error("Netzwerkfehler bei Play:", e);
+        }
+      };
+
+      const imageUrl = track.album?.images[0]?.url || track.images?.[0]?.url || '';
+
+      tile.innerHTML = `
+        <img src="${imageUrl}" alt="${track.name}">
+        <div class="tile-title">${track.name}</div>
+      `;
+      grid.appendChild(tile);
+    });
+
+    updateCurrentlyPlaying();
+
+  } catch (err) {
+    console.error("Netzwerkfehler:", err);
+    document.getElementById('loading').innerText = "Fehler beim Laden der Tracks.";
+  }
+}
 
     function markActiveTile(playingTrackId) {
       const tiles = document.querySelectorAll('.tile');
