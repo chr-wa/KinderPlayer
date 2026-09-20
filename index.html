@@ -96,24 +96,20 @@
   </style>
 </head>
 <body>
+<body>
 
-  <h1 id="page-title">KinderPlayer</h1>
-
-<!-- Fixierte Player-Controls ganz oben -->
+  <!-- Fixierte Player-Controls ganz oben -->
   <div id="player-controls" style="display: none; position: sticky; top: 10px; z-index: 100; background: rgba(24, 24, 24, 0.95); backdrop-filter: blur(8px); padding: 10px 20px; border-radius: 30px; margin: 0 auto 20px auto; max-width: 280px; text-align: center; box-shadow: 0 6px 16px rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.1);">
     <div style="display: flex; align-items: center; justify-content: center; gap: 20px;">
-      <!-- Zurück -->
       <button id="prev-btn" style="background: none; border: none; color: white; cursor: pointer; padding: 5px; display: flex; align-items: center;">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
       </button>
       
-      <!-- Play / Pause -->
       <button id="play-pause-btn" style="background: #1DB954; border: none; color: white; width: 48px; height: 48px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0;">
         <svg id="play-icon" width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
         <svg id="pause-icon" width="22" height="22" viewBox="0 0 24 24" fill="currentColor" style="display: none;"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
       </button>
 
-      <!-- Weiter -->
       <button id="next-btn" style="background: none; border: none; color: white; cursor: pointer; padding: 5px; display: flex; align-items: center;">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
       </button>
@@ -129,15 +125,13 @@
 
   <h1 id="page-title" style="text-align: center; font-size: 1.5rem; margin-bottom: 20px;">KinderPlayer</h1>
 
-  <!-- Kachel-Grid -->
-  <div id="kachel-grid" class="grid"></div>
-
   <button id="login-btn" class="btn-login" style="display:none;" onclick="redirectToSpotify()">Einmalig bei Spotify anmelden</button>
   <div id="loading" class="loading">Prüfe Verbindung...</div>
+  
+  <!-- Kachel-Grid -->
   <div class="grid-container" id="kachel-grid"></div>
 
   <div id="app-version" style="text-align: center; color: #555; font-size: 0.8rem; margin: 30px 0 10px 0;"></div>
-
   <script>
 
     // Erzwingt das Neuladen beim Start, um immer den neuesten Code von GitHub zu haben
