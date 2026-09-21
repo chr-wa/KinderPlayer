@@ -41,7 +41,34 @@ async function findShowId(items){for(const item of items){const episode=getEntry
 async function loadPlaylist(id,title){loading('Lade Inhalte...');ui.categories.style.display='none';setNavigation(true);ui.grid.innerHTML='';ui.title.textContent=title;try{const response=await api(`/playlists/${id}/items?limit=100`);if(!response.ok)throw Error('Playlist konnte nicht geladen werden');const data=await response.json();const items=data.items||[];if(!items.length){loading('Keine Inhalte gefunden.');return}if(selectedCategory==='podcast'){const showId=await findShowId(items);if(showId){await loadEpisodes(showId,title);return}}loading('');items.forEach(item=>{const entry=getEntry(item);if(entry)ui.grid.appendChild(makeTile(entry.name,entry.album?.images?.[0]?.url||entry.images?.[0]?.url,()=>playTrack(id,entry),entry.id))});ui.controls.style.display='block';updatePlayer()}catch(error){console.error(error);loading('Fehler beim Laden der Inhalte.')}}
 async function loadEpisodes(showId,title){loading('Lade Podcast-Folgen...');try{const response=await api(`/shows/${showId}/episodes?limit=50`);if(!response.ok)throw Error('Podcast-Folgen konnten nicht geladen werden');const data=await response.json();ui.grid.innerHTML='';if(!data.items?.length){loading('Keine Folgen gefunden.');return}data.items.forEach(episode=>ui.grid.appendChild(makeTile(episode.name,episode.images?.[0]?.url||'',restart=>playEpisode(episode,restart),episode.id,true)));loading('');ui.controls.style.display='block';updatePlayer()}catch(error){console.error(error);loading('Fehler beim Laden der Podcast-Folgen.')}}
 async function playTrack(playlistId,track){const response=await fetch('https://api.spotify.com/v1/me/player/play',{method:'PUT',headers:{Authorization:'Bearer '+accessToken(),'Content-Type':'application/json'},body:JSON.stringify({context_uri:`spotify:playlist:${playlistId}`,offset:{uri:`spotify:track:${track.id}`}})});if(response.ok){ui.now.textContent=track.name;setTimeout(updatePlayer,500)}else if(response.status===404)notice('Bitte zuerst Spotify auf dem Zielgerät öffnen.')}
-async function playEpisode(episode,restart){const body = { uris: [`spotify:episode:${episode.id}`] };};if(restart)body.position_ms=0;const response=await fetch('https://api.spotify.com/v1/me/player/play',{method:'PUT',headers:{Authorization:'Bearer '+accessToken(),'Content-Type':'application/json'},body:JSON.stringify(body)});if(response.ok){ui.now.textContent=episode.name;setTimeout(updatePlayer,500)}else if(response.status===404)notice('Bitte zuerst Spotify auf dem Zielgerät öffnen.')}
+async function playEpisode(episode, restart) {
+  const body = {
+    uris: [`spotify:episode:${episode.id}`]
+  };
+
+  if (restart) {
+    body.position_ms = 0;
+  }
+
+  const response = await fetch(
+    'https://api.spotify.com/v1/me/player/play',
+    {
+      method: 'PUT',
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem('access_token')}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(body)
+    }
+  );
+
+  if (response.ok) {
+    document.getElementById('now-playing').textContent = episode.name;
+    setTimeout(updatePlayer, 500);
+  } else if (response.status === 404) {
+    notice('Bitte zuerst Spotify auf dem Zielgerät öffnen.');
+  }
+}
 function notice(text){let element=document.getElementById('notice');if(!element){element=document.createElement('div');element.id='notice';element.className='notice';document.body.appendChild(element)}element.textContent=text;element.style.display='block'}
 function markActive(id){document.querySelectorAll('.tile').forEach(tile=>tile.classList.toggle('active',tile.dataset.trackId===id))}
 async function updatePlayer(){const request=++playerRequest;try{const response=await fetch('https://api.spotify.com/v1/me/player',{headers:{Authorization:'Bearer '+accessToken()}});if(request!==playerRequest)return;if(response.status===200){const data=await response.json();ui.controls.style.display='block';ui.play.style.display=data.is_playing?'none':'block';ui.pause.style.display=data.is_playing?'block':'none';if(data.item){markActive(data.item.id);ui.now.textContent=data.item.name}}else if(response.status===204){ui.play.style.display='block';ui.pause.style.display='none';markActive(null);ui.now.textContent='Kein Titel aktiv'}}catch(error){console.error(error)}}
