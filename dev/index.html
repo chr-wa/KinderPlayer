@@ -36,6 +36,27 @@ async function fetchShowEpisodes(showId){
   return episodes;
 }
 
+async function resolveShowId(items,title){
+  // Weg 1: Direkt aus den Episoden in der Playlist
+  for(const raw of items){
+    const e=entry(raw);
+    if(!e)continue;
+    const sid=e.show?.id||raw?.show?.id;
+    if(sid)return sid;
+  }
+  // Weg 2: Suche über den Namen
+  try {
+    const query=encodeURIComponent(title);
+    const response=await api(`/search?q=${query}&type=show&limit=1&market=DE`);
+    if(response.ok){
+      const data=await response.json();
+      const show=data.shows?.items?.[0];
+      if(show)return show.id;
+    }
+  } catch(e){console.warn('Namenssuche fehlgeschlagen',e)}
+  return null;
+}
+
 async function loadPlaylist(id,title,isPodcast){
   const current=++requestId;
   loading('Lade Inhalte...');
@@ -50,13 +71,7 @@ async function loadPlaylist(id,title,isPodcast){
     const items=(await r.json()).items||[];
     if(!items.length){loading('Keine Inhalte gefunden.');return}
     if(isPodcast||category==='podcast'){
-      let showId=null;
-      for(const raw of items){
-        const e=entry(raw);
-        if(!e)continue;
-        const sid=e.show?.id||raw?.show?.id;
-        if(sid){showId=sid;break}
-      }
+      const showId=await resolveShowId(items,title);
       if(showId){
         const episodes=await fetchShowEpisodes(showId);
         if(episodes.length>0){
