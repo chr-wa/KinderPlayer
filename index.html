@@ -6,809 +6,197 @@
   <title>Kinder Player</title>
   <link rel="manifest" href="manifest.json">
   <style>
-    * {
-      box-sizing: border-box;
-      user-select: none;
-      -webkit-user-select: none;
-    }
-
-    body {
-      margin: 0;
-      padding: 20px;
-      background-color: #121212;
-      color: #fff;
-      font-family: sans-serif;
-      overscroll-behavior: none;
-      touch-action: pan-y;
-    }
-
-    h1 {
-      text-align: center;
-      color: #1db954;
-      font-size: 1.8rem;
-      margin-bottom: 20px;
-    }
-
-    .btn-login {
-      display: block;
-      margin: 50px auto;
-      padding: 15px 30px;
-      background: #1db954;
-      color: white;
-      border: none;
-      border-radius: 25px;
-      font-size: 1.2rem;
-      font-weight: bold;
-      cursor: pointer;
-    }
-
-    .grid-container {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-      gap: 15px;
-    }
-
-    .tile {
-      background: #282828;
-      border-radius: 12px;
-      padding: 10px;
-      text-align: center;
-      cursor: pointer;
-      border: 3px solid transparent;
-      transition: all 0.2s ease;
-    }
-
-    .tile.active {
-      border-color: #1db954;
-      background: #333333;
-      transform: scale(1.03);
-      box-shadow: 0 4px 15px rgba(29, 185, 84, 0.4);
-    }
-
-    .tile img {
-      width: 100%;
-      border-radius: 8px;
-      aspect-ratio: 1 / 1;
-      object-fit: cover;
-    }
-
-    .tile-title {
-      margin-top: 8px;
-      font-size: 0.95rem;
-      font-weight: bold;
-      display: -webkit-box;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
-    }
-
-    .loading {
-      text-align: center;
-      color: #888;
-      font-size: 1.2rem;
-      margin-top: 40px;
-    }
-
-    .player-controls {
-      display: none;
-      position: sticky;
-      top: 10px;
-      z-index: 100;
-      background: rgba(24, 24, 24, 0.95);
-      backdrop-filter: blur(8px);
-      padding: 10px 20px;
-      border-radius: 30px;
-      margin: 0 auto 20px auto;
-      max-width: 500px;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.25);
-    }
-
-    .player-controls-inner {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 20px;
-    }
-
-    .player-button {
-      background: none;
-      border: none;
-      color: white;
-      cursor: pointer;
-      padding: 5px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .player-button.primary {
-      background: #1DB954;
-      width: 48px;
-      height: 48px;
-      border-radius: 50%;
-    }
-
-    .now-playing {
-      text-align: center;
-      color: #e5e5e5;
-      font-size: 0.85rem;
-      font-weight: 600;
-      min-height: 1.2em;
-      max-width: 100%;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      padding: 0 8px;
-      margin-top: 6px;
-    }
-
-    .nav-bar {
-      display: none;
-      text-align: center;
-      margin: 15px 0 25px 0;
-    }
-
-    .back-btn {
-      background: #282828;
-      color: white;
-      border: 1px solid rgba(255,255,255,0.15);
-      padding: 10px 22px;
-      border-radius: 25px;
-      font-size: 0.95rem;
-      font-weight: bold;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-    }
-
-    .app-version {
-      text-align: center;
-      color: #555;
-      font-size: 0.8rem;
-      margin: 30px 0 10px 0;
-    }
-
-    .empty-state {
-      text-align: center;
-      grid-column: 1 / -1;
-    }
-
-    .notice {
-      position: fixed;
-      bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: #ff4d4d;
-      color: white;
-      padding: 12px 24px;
-      border-radius: 20px;
-      font-weight: bold;
-      display: none;
-      z-index: 200;
-      box-shadow: 0 8px 25px rgba(0,0,0,0.25);
-      max-width: 90vw;
-      text-align: center;
-    }
-
-    @media (max-width: 480px) {
-      body {
-        padding: 15px;
-      }
-
-      h1 {
-        font-size: 1.5rem;
-      }
-
-      .grid-container {
-        gap: 12px;
-      }
-    }
+    *{box-sizing:border-box;user-select:none;-webkit-user-select:none}body{margin:0;padding:20px 20px 125px;background:#121212;color:#fff;font-family:sans-serif;touch-action:pan-y}body.detail{padding-top:75px}h1{text-align:center;color:#1db954;font-size:1.8rem;margin:0 0 20px}.btn-login{display:block;margin:50px auto;padding:15px 30px;background:#1db954;color:#fff;border:0;border-radius:25px;font-size:1.2rem;font-weight:bold;cursor:pointer}.category-bar{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin-bottom:20px}.category-bar.sticky{position:sticky;top:10px;z-index:9;background:#121212;padding:10px 0;border-radius:12px}.category-tile{background:#282828;color:#fff;border:3px solid transparent;border-radius:12px;padding:12px 18px;font-weight:bold;cursor:pointer}.category-tile.active{border-color:#1db954;background:#333}.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:15px}.tile{position:relative;background:#282828;border:3px solid transparent;border-radius:12px;padding:10px;text-align:center;cursor:pointer;transition:.2s}.tile.active{border-color:#1db954!important;background:#333;transform:scale(1.03);box-shadow:0 4px 15px rgba(29,185,84,.4)}.tile img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;background:#333}.tile-title{margin-top:8px;font-size:.95rem;font-weight:bold;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.restart-btn{display:block;margin:10px auto 0;padding:7px 10px;background:#444;color:#fff;border:1px solid #777;border-radius:16px;font-size:.75rem;font-weight:bold;cursor:pointer}.loading{display:none;text-align:center;color:#888;font-size:1.1rem;margin:35px 0}.nav{display:none;position:fixed;top:15px;left:50%;transform:translateX(-50%);z-index:10;width:max-content;max-width:calc(100% - 30px)}.back-btn{background:#282828;color:#fff;border:1px solid rgba(255,255,255,.15);padding:10px 22px;border-radius:25px;font-size:.95rem;font-weight:bold;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px}.controls{display:none;position:fixed;bottom:15px;left:50%;transform:translateX(-50%);width:min(500px,calc(100% - 30px));z-index:20;background:rgba(24,24,24,.95);backdrop-filter:blur(8px);padding:10px 20px;border-radius:30px;box-shadow:0 4px 16px rgba(0,0,0,.25)}.player-controls-inner{display:flex;align-items:center;justify-content:center;gap:20px}.player-button{background:none;border:0;color:#fff;cursor:pointer;padding:5px;display:flex;align-items:center;justify-content:center}.player-button.primary{background:#1db954;width:48px;height:48px;border-radius:50%}.now-playing{text-align:center;color:#e5e5e5;font-size:.85rem;font-weight:600;min-height:1.2em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 8px;margin-top:6px}
   </style>
 </head>
 <body>
-
-  <div id="player-controls" class="player-controls">
-    <div class="player-controls-inner">
-      <button id="prev-btn" class="player-button" aria-label="Vorheriger Titel">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/>
-        </svg>
-      </button>
-
-      <button id="play-pause-btn" class="player-button primary" aria-label="Abspielen/Pausieren">
-        <svg id="play-icon" width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M8 5v14l11-7z"/>
-        </svg>
-        <svg id="pause-icon" width="22" height="22" viewBox="0 0 24 24" fill="currentColor" style="display:none;">
-          <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
-        </svg>
-      </button>
-
-      <button id="next-btn" class="player-button" aria-label="Nächster Titel">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/>
-        </svg>
-      </button>
-    </div>
-
-    <div id="now-playing" class="now-playing">Kein Titel aktiv</div>
-  </div>
-
-  <div id="nav-bar" class="nav-bar">
-    <button id="back-to-main-btn" class="back-btn" type="button">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-        <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
-      </svg>
-      Zurück zur Übersicht
+  <h1 id="title">KinderPlayer</h1>
+  <button id="login" class="btn-login" style="display:none" type="button">Einmalig bei Spotify anmelden</button>
+  <div id="categories" class="category-bar" style="display:none"></div>
+  <div id="loading" class="loading"></div>
+  <div id="grid" class="grid"></div>
+  <div id="nav" class="nav">
+    <button id="back" class="back-btn" type="button">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+      <span>Zurück zur Übersicht</span>
     </button>
   </div>
-
-  <h1 id="page-title">KinderPlayer</h1>
-
-  <button id="login-btn" class="btn-login" type="button" style="display:none;">
-    Einmalig bei Spotify anmelden
-  </button>
-
-  <div id="loading" class="loading">Prüfe Verbindung...</div>
-
-  <div class="grid-container" id="kachel-grid"></div>
-
-  <div id="app-version" class="app-version"></div>
+  <div id="controls" class="controls">
+    <div class="player-controls-inner">
+      <button id="previous" class="player-button" type="button" aria-label="Vorheriger Titel">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
+      </button>
+      <button id="toggle" class="player-button primary" type="button" aria-label="Abspielen/Pausieren">
+        <svg id="play-icon" width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+        <svg id="pause-icon" width="22" height="22" viewBox="0 0 24 24" fill="currentColor" style="display:none"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+      </button>
+      <button id="next" class="player-button" type="button" aria-label="Nächster Titel">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
+      </button>
+    </div>
+    <div id="now" class="now-playing">Kein Titel aktiv</div>
+  </div>
 
   <script>
-    const CLIENT_ID = 'a6c7e7f802d043c29cce919b9e0c7f45';
-    const REDIRECT_URI = 'https://chr-wa.github.io/KinderPlayer/';
-    const PREFIX = "[KID]";
+    const CLIENT_ID = 'a6c7e7f802d043c29cce919b9e0c7f45', REDIRECT_URI = 'https://chr-wa.github.io/KinderPlayer/', CATEGORIES = [{key:'music',label:'Musik',prefix:'[KPM]'},{key:'audio',label:'Hörspiele',prefix:'[KPH]'},{key:'podcast',label:'Podcasts',prefix:'[KPP]'}];
+    const $ = id => document.getElementById(id), token = () => localStorage.getItem('access_token');
+    let playlists = [], category = null, requestId = 0, lastActive = null;
 
-    const ui = {
-      loginBtn: document.getElementById('login-btn'),
-      loading: document.getElementById('loading'),
-      grid: document.getElementById('kachel-grid'),
-      pageTitle: document.getElementById('page-title'),
-      navBar: document.getElementById('nav-bar'),
-      playerControls: document.getElementById('player-controls'),
-      appVersion: document.getElementById('app-version'),
-      playPauseBtn: document.getElementById('play-pause-btn'),
-      prevBtn: document.getElementById('prev-btn'),
-      nextBtn: document.getElementById('next-btn'),
-      backToMainBtn: document.getElementById('back-to-main-btn'),
-      playIcon: document.getElementById('play-icon'),
-      pauseIcon: document.getElementById('pause-icon'),
-      nowPlaying: document.getElementById('now-playing')
-    };
-
-    let updateSequence = 0;
-
-    function setLoading(message, visible = true) {
-      ui.loading.textContent = message;
-      ui.loading.style.display = visible ? 'block' : 'none';
+    function loading(text) { $('loading').textContent = text || ''; $('loading').style.display = text ? 'block' : 'none'; }
+    function setDetail(v) { $('nav').style.display = v ? 'block' : 'none'; document.body.classList.toggle('detail', v); $('categories').classList.toggle('sticky', !v); }
+    function showLogin() { loading(''); $('login').style.display = 'block'; $('categories').style.display = 'none'; $('grid').innerHTML = ''; $('controls').style.display = 'none'; setDetail(false); markActive(null); }
+    async function api(path, options = {}) {
+      const r = await fetch('https://api.spotify.com/v1' + path, { ...options, headers: { Authorization: 'Bearer ' + token(), ...(options.headers || {}) } });
+      if (r.status === 401) { localStorage.removeItem('access_token'); showLogin(); throw Error('Nicht autorisiert'); }
+      return r;
     }
-
-    function setPageTitle(title) {
-      ui.pageTitle.textContent = title;
-    }
-
-    function setNowPlayingText(title) {
-      if (!ui.nowPlaying) return;
-      ui.nowPlaying.textContent = title || 'Kein Titel aktiv';
-    }
-
-    function showLogin() {
-      ui.loading.style.display = 'none';
-      ui.loginBtn.style.display = 'block';
-      ui.playerControls.style.display = 'none';
-      ui.navBar.style.display = 'none';
-      setNowPlayingText('Kein Titel aktiv');
-    }
-
-    function showNotice(message) {
-      let notice = document.getElementById('player-notice');
-      if (!notice) {
-        notice = document.createElement('div');
-        notice.id = 'player-notice';
-        notice.className = 'notice';
-        document.body.appendChild(notice);
+    function entry(item) { return item?.track || item?.item || item?.episode || null; }
+    function cleanName(name) { const p = CATEGORIES.find(c => name.startsWith(c.prefix)); return p ? name.slice(p.prefix.length).trim() : name; }
+    function makeTile(title, image, onClick, id, isPodcast = false) {
+      const t = document.createElement('div'); t.className = 'tile'; t.dataset.trackId = String(id || ''); t.onclick = () => onClick(false);
+      const img = document.createElement('img'); img.src = image || ''; img.alt = '';
+      const label = document.createElement('div'); label.className = 'tile-title'; label.textContent = title;
+      t.append(img, label);
+      if (isPodcast) {
+        const b = document.createElement('button'); b.type = 'button'; b.className = 'restart-btn'; b.textContent = '↺ Von Anfang an';
+        b.onclick = e => { e.stopPropagation(); onClick(true); }; t.append(b);
       }
-      notice.textContent = message;
-      notice.style.display = 'block';
+      return t;
     }
-
-    function hideNotice() {
-      const notice = document.getElementById('player-notice');
-      if (notice) notice.style.display = 'none';
-    }
-
-    function setPlayPauseIcon(isPlaying) {
-      if (!ui.playIcon || !ui.pauseIcon) return;
-      ui.playIcon.style.display = isPlaying ? 'none' : 'block';
-      ui.pauseIcon.style.display = isPlaying ? 'block' : 'none';
-    }
-
-    function createTile({ title, imageUrl = '', trackId = null, onClick }) {
-      const tile = document.createElement('div');
-      tile.className = 'tile';
-      if (trackId) tile.dataset.trackId = trackId;
-
-      tile.onclick = onClick;
-
-      tile.innerHTML = `
-        <img src="${imageUrl || ''}" alt="${title}">
-        <div class="tile-title">${title}</div>
-      `;
-
-      return tile;
-    }
-
-    function generateRandomString(length) {
-      const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~';
-      const values = new Uint8Array(length);
-      window.crypto.getRandomValues(values);
-      return Array.from(values, value => possible[value % possible.length]).join('');
-    }
-
-    async function generateCodeChallenge(codeVerifier) {
-      const encoder = new TextEncoder();
-      const data = encoder.encode(codeVerifier);
-      const digest = await window.crypto.subtle.digest('SHA-256', data);
-      return btoa(String.fromCharCode(...new Uint8Array(digest)))
-        .replace(/\+/g, '-')
-        .replace(/\//g, '_')
-        .replace(/=+$/, '');
-    }
-
-    function spotifyFetch(endpoint, options = {}) {
-      const token = localStorage.getItem('access_token');
-
-      return fetch(`https://api.spotify.com/v1${endpoint}`, {
-        ...options,
-        headers: {
-          Authorization: `Bearer ${token}`,
-          ...(options.headers || {})
-        }
-      }).then(async (response) => {
-        if (response.status === 401) {
-          localStorage.removeItem('access_token');
-          showLogin();
-          throw new Error('Unauthorized');
-        }
-        return response;
+    function renderCategories() {
+      const b = $('categories'); b.innerHTML = '';
+      CATEGORIES.forEach(c => {
+        const x = document.createElement('button'); x.type = 'button'; x.className = 'category-tile' + (category === c.key ? ' active' : '');
+        x.textContent = c.label; x.onclick = () => { category = category === c.key ? null : c.key; renderCategories(); renderPlaylists(); }; b.append(x);
       });
+      b.style.display = 'flex';
     }
-
-    async function redirectToSpotify() {
-      const verifier = generateRandomString(128);
-      const challenge = await generateCodeChallenge(verifier);
-
-      localStorage.setItem('pkce_verifier', verifier);
-
-      const params = new URLSearchParams({
-        client_id: CLIENT_ID,
-        response_type: 'code',
-        redirect_uri: REDIRECT_URI,
-        scope: 'user-read-playback-state user-modify-playback-state playlist-read-private playlist-read-collaborative',
-        code_challenge_method: 'S256',
-        code_challenge: challenge
+    function renderPlaylists() {
+      const b = $('grid'), c = CATEGORIES.find(x => x.key === category), list = c ? playlists.filter(p => p.name.startsWith(c.prefix)) : playlists;
+      b.innerHTML = ''; if (!list.length) { b.innerHTML = '<p style="text-align:center;width:100%;color:#888">Keine Playlists gefunden.</p>'; loading(''); return; }
+      list.forEach(p => {
+        const type = CATEGORIES.find(x => p.name.startsWith(x.prefix));
+        b.append(makeTile(cleanName(p.name), p.images?.[0]?.url, () => loadPlaylist(p.id, cleanName(p.name), type?.key === 'podcast'), p.id));
       });
-
-      window.location.href = `https://accounts.spotify.com/authorize?${params.toString()}`;
+      loading(''); updatePlayer();
     }
-
-    async function getAccessToken(code) {
-      const verifier = localStorage.getItem('pkce_verifier');
-
-      if (!verifier) {
-        console.error('Kein PKCE Verifier gefunden.');
-        showLogin();
-        return;
-      }
-
-      const params = new URLSearchParams({
-        client_id: CLIENT_ID,
-        grant_type: 'authorization_code',
-        code: code,
-        redirect_uri: REDIRECT_URI,
-        code_verifier: verifier
-      });
-
+    async function overview() {
+      const id = ++requestId; loading('Lade Playlists...'); $('login').style.display = 'none'; setDetail(false); $('title').textContent = 'KinderPlayer'; category = null;
       try {
-        const response = await fetch('https://accounts.spotify.com/api/token', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: params
-        });
+        const d = await (await api('/me/playlists?limit=50')).json(); if (id !== requestId) return;
+        playlists = (d.items || []).filter(p => p.name && CATEGORIES.some(c => p.name.startsWith(c.prefix)));
+        renderCategories(); renderPlaylists();
+      } catch (e) { if (id === requestId) { console.error(e); loading('Fehler beim Laden der Playlists.'); } }
+    }
+    function markActive(id) { const x = id == null ? null : String(id); document.querySelectorAll('.tile').forEach(t => t.classList.toggle('active', x !== null && t.dataset.trackId === x)); }
 
-        const data = await response.json();
-
-        if (data.access_token) {
-          localStorage.setItem('access_token', data.access_token);
-
-          if (data.refresh_token) {
-            localStorage.setItem('refresh_token', data.refresh_token);
+    async function fetchShowEpisodes(showId) {
+      const episodes = [], seen = new Set();
+      for (const url of [`/shows/${showId}/episodes?limit=50&market=DE`, `/shows/${showId}/episodes?limit=50`]) {
+        let next = url;
+        try {
+          while (next) {
+            const r = await api(next); if (!r.ok) throw Error(String(r.status));
+            const d = await r.json(); (d.items || []).forEach(ep => { if (ep?.id && !seen.has(ep.id)) { seen.add(ep.id); episodes.push(ep); } });
+            next = d.next ? new URL(d.next).pathname + new URL(d.next).search : null;
           }
-
-          localStorage.removeItem('pkce_verifier');
-          window.history.replaceState({}, document.title, window.location.pathname);
-
-          loadCategories(data.access_token);
-        } else {
-          console.error('Spotify Fehler-Details:', data);
-          setLoading('Fehler: ' + (data.error_description || 'Token abgelehnt'));
-        }
-      } catch (err) {
-        console.error('Fetch Error:', err);
-        setLoading('Netzwerkfehler beim Token-Tausch.');
+        } catch (err) { console.warn('Show-Folgenabruf:', url, err); }
       }
+      return episodes;
     }
 
-    async function validateStoredToken() {
-      const token = localStorage.getItem('access_token');
-
-      if (!token) {
-        showLogin();
-        return false;
+    async function resolveShowId(items, title) {
+      for (const raw of items) {
+        const e = entry(raw); if (!e) continue;
+        const sid = e.show?.id || raw?.show?.id; if (sid) return sid;
       }
-
-      try {
-        const res = await fetch('https://api.spotify.com/v1/me', {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-
-        if (res.status === 401) {
-          localStorage.removeItem('access_token');
-          localStorage.removeItem('refresh_token');
-          showLogin();
-          return false;
-        }
-
-        if (res.ok) {
-          const data = await res.json();
-          if (data && data.id) {
-            return true;
-          }
-        }
-
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('refresh_token');
-        showLogin();
-        return false;
-      } catch (err) {
-        console.error('Token-Validierung fehlgeschlagen:', err);
-        return false;
-      }
-    }
-
-    async function loadCategories(token) {
-      setLoading('Lade Übersichten...');
-      ui.loginBtn.style.display = 'none';
-      ui.navBar.style.display = 'none';
-      setPageTitle('KinderPlayer');
-      setNowPlayingText('Kein Titel aktiv');
-
-      ui.grid.innerHTML = '';
-
-      try {
-        const res = await spotifyFetch('/me/playlists?limit=50', {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-
-        const data = await res.json();
-        ui.loading.style.display = 'none';
-
-        const playlists = data.items || [];
-        const kidPlaylists = playlists.filter(pl => pl.name && pl.name.startsWith(PREFIX));
-
-        if (kidPlaylists.length === 0) {
-          ui.grid.innerHTML = `<p class="empty-state">Keine Playlists mit <b>${PREFIX}</b> im Namen in Spotify gefunden!</p>`;
-          return;
-        }
-
-        kidPlaylists.forEach(pl => {
-          const cleanTitle = pl.name.replace(PREFIX, '').trim();
-          const imageUrl = pl.images && pl.images.length > 0 ? pl.images[0].url : '';
-
-          const tile = createTile({
-            title: cleanTitle,
-            imageUrl,
-            onClick: () => loadPlaylistTracks(token, pl.id, cleanTitle)
-          });
-
-          ui.grid.appendChild(tile);
-        });
-
-        updateCurrentlyPlaying();
-
-      } catch (err) {
-        console.error('Fehler beim Laden der Kategorien:', err);
-        setLoading('Fehler beim Laden der Übersichten.');
-      }
-    }
-
-    async function loadPlaylistTracks(token, playlistId, title) {
-      setLoading('Lade Folgen...');
-      ui.loginBtn.style.display = 'none';
-      ui.grid.innerHTML = '';
-      ui.navBar.style.display = 'block';
-      setPageTitle(title);
-
-      try {
-        const res = await spotifyFetch(`/playlists/${playlistId}/items?limit=100`);
-
-        if (!res.ok) {
-          const errData = await res.json();
-          console.error('API Fehler-Details:', errData);
-          setLoading(`Spotify Fehler ${res.status}: ${errData.error?.message || 'Zugriff verweigert'}`);
-          return;
-        }
-
-        const data = await res.json();
-        ui.loading.style.display = 'none';
-        ui.playerControls.style.display = 'block';
-
-        ui.grid.innerHTML = '';
-
-        const items = data.items || [];
-
-        if (items.length === 0) {
-          ui.loading.style.display = 'block';
-          setLoading('Keine Titel in dieser Playlist gefunden.');
-          return;
-        }
-
-        items.forEach(item => {
-          const track = item.track || item.item || item.episode;
-          if (!track) return;
-
-          const imageUrl = track.album?.images[0]?.url || track.images?.[0]?.url || '';
-
-          const tile = createTile({
-            title: track.name,
-            imageUrl,
-            trackId: track.id,
-            onClick: async () => {
-              try {
-                const playPayload = {
-                  context_uri: `spotify:playlist:${playlistId}`,
-                  offset: { uri: `spotify:track:${track.id}` }
-                };
-
-                let playRes = await fetch('https://api.spotify.com/v1/me/player/play', {
-                  method: 'PUT',
-                  headers: {
-                    Authorization: `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                  },
-                  body: JSON.stringify(playPayload)
-                });
-
-                if (playRes.status === 404) {
-                  const devicesRes = await fetch('https://api.spotify.com/v1/me/player/devices', {
-                    headers: { Authorization: `Bearer ${token}` }
-                  });
-
-                  if (devicesRes.ok) {
-                    const devicesData = await devicesRes.json();
-                    const devices = devicesData.devices || [];
-
-                    if (devices.length > 0) {
-                      const targetDeviceId = devices[0].id;
-
-                      playRes = await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${targetDeviceId}`, {
-                        method: 'PUT',
-                        headers: {
-                          Authorization: `Bearer ${token}`,
-                          'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify(playPayload)
-                      });
-                    }
-                  }
-                }
-
-                if (playRes.status === 404) {
-                  showNotice('Achtung: Spotify ist auf dem Abspielgerät nicht bereit. Bitte einmal die Spotify-App auf dem Zielgerät öffnen!');
-                } else if (!playRes.ok) {
-                  const err = await playRes.json();
-                  console.error('Wiedergabefehler:', err);
-                } else {
-                  hideNotice();
-                  setNowPlayingText(track.name);
-                  setTimeout(updateCurrentlyPlaying, 500);
-                }
-
-              } catch (e) {
-                console.error('Netzwerkfehler bei Play:', e);
-              }
+      const firstItem = items[0];
+      if (firstItem) {
+        try {
+          const e = entry(firstItem); if (e) {
+            const r = await api(`/episodes/${e.id}`); if (r.ok) {
+              const d = await r.json(); if (d.show?.id) return d.show.id;
             }
-          });
-
-          ui.grid.appendChild(tile);
-        });
-
-        updateCurrentlyPlaying();
-
-      } catch (err) {
-        console.error('Netzwerkfehler:', err);
-        setLoading('Fehler beim Laden der Tracks.');
-      }
-    }
-
-    function markActiveTile(playingTrackId) {
-      const tiles = document.querySelectorAll('.tile');
-
-      tiles.forEach(tile => {
-        if (tile.dataset.trackId === playingTrackId) {
-          tile.classList.add('active');
-        } else {
-          tile.classList.remove('active');
-        }
-      });
-    }
-
-    async function updateCurrentlyPlaying() {
-      const token = localStorage.getItem('access_token');
-      if (!token) return;
-
-      const currentSequence = ++updateSequence;
-
-      try {
-        const res = await fetch('https://api.spotify.com/v1/me/player', {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-
-        if (currentSequence !== updateSequence) return;
-
-        if (res.status === 200) {
-          const data = await res.json();
-          ui.playerControls.style.display = 'block';
-          setPlayPauseIcon(data.is_playing);
-
-          if (data.item) {
-            markActiveTile(data.item.id);
-            setNowPlayingText(data.item.name);
-          } else {
-            setNowPlayingText('Kein Titel aktiv');
           }
-        } else if (res.status === 204) {
-          setPlayPauseIcon(false);
-          markActiveTile(null);
-          setNowPlayingText('Kein Titel aktiv');
+        } catch (err) { console.warn('Detail-Abfrage fehlgeschlagen', err); }
+      }
+      try {
+        const query = encodeURIComponent(title);
+        const response = await api(`/search?q=${query}&type=show&limit=1&market=DE`);
+        if (response.ok) {
+          const data = await response.json();
+          const show = data.shows?.items?.[0]; if (show) return show.id;
         }
-      } catch (e) {
-        console.error('Fehler beim Abrufen des Player-Status:', e);
-      }
+      } catch (e) { console.warn('Namenssuche fehlgeschlagen', e); }
+      return null;
     }
 
-    function preventAppCloseInPinning() {
-      window.history.pushState({ page: 'home' }, '', window.location.href);
-
-      window.addEventListener('popstate', function () {
-        window.history.pushState({ page: 'home' }, '', window.location.href);
-      });
-    }
-
-    function renderLastModified() {
-      const versionEl = document.getElementById('app-version');
-      if (!versionEl) return;
-
-      const lastModified = new Date(document.lastModified);
-      const formattedDate = lastModified.toLocaleString('de-DE', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-
-      versionEl.innerText = `Stand: ${formattedDate} Uhr, (c) Christian Waschke`;
-    }
-
-    document.getElementById('login-btn').addEventListener('click', redirectToSpotify);
-
-    document.getElementById('play-pause-btn').addEventListener('click', async () => {
-      const token = localStorage.getItem('access_token');
-      if (!token) return;
-
+    async function loadPlaylist(id, title, isPodcast) {
+      const current = ++requestId; loading('Lade Inhalte...'); $('categories').style.display = 'none'; setDetail(true); $('grid').innerHTML = ''; $('title').textContent = title;
       try {
-        const stateRes = await fetch('https://api.spotify.com/v1/me/player', {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-
-        if (stateRes.status === 200) {
-          const playerState = await stateRes.json();
-          const isCurrentlyPlaying = playerState.is_playing;
-          const endpoint = isCurrentlyPlaying ? 'pause' : 'play';
-
-          await fetch(`https://api.spotify.com/v1/me/player/${endpoint}`, {
-            method: 'PUT',
-            headers: { Authorization: `Bearer ${token}` }
-          });
-
-          setPlayPauseIcon(!isCurrentlyPlaying);
-          if (playerState.item && playerState.item.name) {
-            setNowPlayingText(playerState.item.name);
+        const r = await api(`/playlists/${id}/items?limit=100`); if (current !== requestId) return;
+        if (!r.ok) throw Error('Playlist konnte nicht geladen werden');
+        const items = (await r.json()).items || []; if (!items.length) { loading('Keine Inhalte gefunden.'); return; }
+        if (isPodcast || category === 'podcast') {
+          const showId = await resolveShowId(items, title);
+          if (showId) {
+            const episodes = await fetchShowEpisodes(showId);
+            if (episodes.length > 0) {
+              const b = $('grid'); b.innerHTML = '';
+              episodes.forEach(ep => b.append(makeTile(ep.name, ep.images?.[0]?.url, restart => playEpisode(ep, restart), ep.id, true)));
+              loading(''); $('controls').style.display = 'block'; updatePlayer(); return;
+            }
           }
-
-          setTimeout(updateCurrentlyPlaying, 500);
-
-        } else if (stateRes.status === 204 || stateRes.status === 404) {
-          showNotice('Kein aktiver Player gefunden. Bitte erst ein Lied über eine Kachel starten!');
         }
+        let rendered = 0;
+        items.forEach(raw => {
+          const e = entry(raw); if (!e) return;
+          rendered++; const image = e.album?.images?.[0]?.url || e.images?.[0]?.url || '';
+          $('grid').append(makeTile(e.name, image, restart => isPodcast ? playEpisode(e, restart) : playTrack(id, e), e.id, isPodcast));
+        });
+        if (current !== requestId) return;
+        if (!rendered) { loading('Keine Folgen gefunden.'); return; }
+        loading(''); $('controls').style.display = 'block'; updatePlayer();
+      } catch (e) { if (current !== requestId) return; console.error(e); if (!$('grid').children.length) loading('Fehler beim Laden der Inhalte.'); else loading(''); }
+    }
 
-      } catch (e) {
-        console.error('Fehler beim Steuern der Wiedergabe:', e);
-      }
-    });
-
-    document.getElementById('prev-btn').addEventListener('click', async () => {
-      const token = localStorage.getItem('access_token');
-      if (!token) return;
-
+    async function play(body) { return fetch('https://api.spotify.com/v1/me/player/play', { method: 'PUT', headers: { Authorization: 'Bearer ' + token(), 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); }
+    async function playTrack(pid, t) { const r = await play({ context_uri: `spotify:playlist:${pid}`, offset: { uri: `spotify:track:${t.id}` } }); if (r.ok) { lastActive = { id: String(t.id), title: t.name }; markActive(t.id); $('now').textContent = t.name; setTimeout(updatePlayer, 500); } }
+    async function playEpisode(e, restart) { const b = { uris: [`spotify:episode:${e.id}`] }; if (restart) b.position_ms = 0; const r = await play(b); if (r.ok) { lastActive = { id: String(e.id), title: e.name }; markActive(e.id); $('now').textContent = e.name; setTimeout(updatePlayer, 500); } }
+    async function updatePlayer() {
       try {
-        await fetch('https://api.spotify.com/v1/me/player/previous', {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        setTimeout(updateCurrentlyPlaying, 500);
-      } catch (e) {
-        console.error('Fehler beim Zurückspringen:', e);
-      }
-    });
-
-    document.getElementById('next-btn').addEventListener('click', async () => {
-      const token = localStorage.getItem('access_token');
-      if (!token) return;
-
-      try {
-        await fetch('https://api.spotify.com/v1/me/player/next', {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        setTimeout(updateCurrentlyPlaying, 500);
-      } catch (e) {
-        console.error('Fehler beim Vorwärtsspringen:', e);
-      }
-    });
-
-    document.getElementById('back-to-main-btn').addEventListener('click', () => {
-      const token = localStorage.getItem('access_token');
-      if (token) loadCategories(token);
-    });
-
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW Reg Fehler:', err));
+        const r = await fetch('https://api.spotify.com/v1/me/player', { headers: { Authorization: 'Bearer ' + token() } });
+        if (r.status === 200) {
+          const d = await r.json(); $('controls').style.display = 'block'; $('play-icon').style.display = d.is_playing ? 'none' : 'block'; $('pause-icon').style.display = d.is_playing ? 'block' : 'none';
+          const i = d.item, id = i?.id || i?.uri?.split(':').pop();
+          if (id) { lastActive = { id: String(id), title: i.name || lastActive?.title }; $('now').textContent = lastActive.title; markActive(id); } else if (lastActive) { $('now').textContent = lastActive.title; markActive(lastActive.id); }
+        } else if (r.status === 204) { markActive(null); $('now').textContent = 'Kein Titel aktiv'; }
+      } catch (error) { if (lastActive) { $('now').textContent = lastActive.title; markActive(lastActive.id); } }
     }
-
-    if (performance.navigation && performance.navigation.type !== 1) {
-      fetch(window.location.href, { cache: 'reload' });
+    async function control(action) { await fetch('https://api.spotify.com/v1/me/player/' + action, { method: action === 'next' || action === 'previous' ? 'POST' : 'PUT', headers: { Authorization: 'Bearer ' + token() } }); setTimeout(updatePlayer, 500); }
+    function randomString(length) { const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~', values = new Uint8Array(length); crypto.getRandomValues(values); return Array.from(values, value => chars[value % chars.length]).join(''); }
+    async function login() {
+      const verifier = randomString(128), digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier)), challenge = btoa(String.fromCharCode(...new Uint8Array(digest))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+      localStorage.setItem('pkce', verifier);
+      const p = new URLSearchParams({ client_id: CLIENT_ID, response_type: 'code', redirect_uri: REDIRECT_URI, scope: 'user-read-playback-state user-modify-playback-state playlist-read-private playlist-read-collaborative', code_challenge_method: 'S256', code_challenge: challenge });
+      location.href = 'https://accounts.spotify.com/authorize?' + p;
     }
-
-    function initializeApp() {
-      const args = new URLSearchParams(window.location.search);
-      const code = args.get('code');
-      const storedToken = localStorage.getItem('access_token');
-
-      if (code) {
-        getAccessToken(code);
-      } else if (storedToken) {
-        validateStoredToken().then(valid => {
-          if (valid) {
-            loadCategories(storedToken);
-          } else {
-            showLogin();
-          }
-        });
-      } else {
-        showLogin();
-      }
+    async function exchange(code) {
+      const p = new URLSearchParams({ client_id: CLIENT_ID, grant_type: 'authorization_code', code, redirect_uri: REDIRECT_URI, code_verifier: localStorage.getItem('pkce') });
+      const r = await fetch('https://accounts.spotify.com/api/token', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: p });
+      const d = await r.json(); if (d.access_token) { localStorage.setItem('access_token', d.access_token); history.replaceState({}, document.title, location.pathname); overview(); } else showLogin();
     }
-
-    document.addEventListener('DOMContentLoaded', initializeApp);
-
-    setInterval(updateCurrentlyPlaying, 5000);
-    preventAppCloseInPinning();
-    renderLastModified();
+    $('login').onclick = login; $('back').onclick = overview; $('previous').onclick = () => control('previous'); $('next').onclick = () => control('next'); $('toggle').onclick = async () => {
+      const r = await fetch('https://api.spotify.com/v1/me/player', { headers: { Authorization: 'Bearer ' + token() } });
+      if (r.status === 200) { const d = await r.json(); control(d.is_playing ? 'pause' : 'play'); } else alert('Kein aktiver Player gefunden.');
+    };
+    (async () => {
+      const code = new URLSearchParams(location.search).get('code'); if (code) return exchange(code);
+      const t = localStorage.getItem('access_token'); if (!t) return showLogin();
+      const r = await fetch('https://api.spotify.com/v1/me', { headers: { Authorization: 'Bearer ' + t } });
+      if (r.ok) overview(); else showLogin();
+    })();
+    setInterval(updatePlayer, 5000);
   </script>
 </body>
 </html>
