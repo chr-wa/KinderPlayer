@@ -41,17 +41,35 @@
   <script>
     const CLIENT_ID = 'a6c7e7f802d043c29cce919b9e0c7f45', REDIRECT_URI = 'https://chr-wa.github.io/KinderPlayer/', CATEGORIES = [{key:'music',label:'Musik',prefix:'[KPM]'},{key:'audio',label:'Hörspiele',prefix:'[KPH]'},{key:'podcast',label:'Podcasts',prefix:'[KPP]'}];
     const OAUTH_SCOPE = 'streaming user-read-email user-read-private user-read-playback-state user-modify-playback-state playlist-read-private playlist-read-collaborative';
+    const REQUIRED_SCOPES = ['streaming', 'user-read-email', 'user-read-private', 'user-read-playback-state', 'user-modify-playback-state'];
     const $ = id => document.getElementById(id), token = () => localStorage.getItem('access_token');
-    let playlists = [], category = null, requestId = 0, lastActive = null, webPlayer = null, webPlayerDeviceId = null, webPlayerReady = false;
+    let playlists = [], category = null, requestId = 0, lastActive = null, webPlayer = null, webPlayerDeviceId = null, webPlayerReady = false, currentPlaybackMode = 'track';
 
     function loading(text) { $('loading').textContent = text || ''; $('loading').style.display = text ? 'block' : 'none'; }
     function setDetail(v) { $('nav').style.display = v ? 'block' : 'none'; document.body.classList.toggle('detail', v); $('categories').classList.toggle('sticky', !v); }
-    function showLogin() { loading(''); $('login').style.display = 'block'; $('categories').style.display = 'none'; $('grid').innerHTML = ''; $('controls').style.display = 'none'; setDetail(false); markActive(null); webPlayerDeviceId = null; webPlayerReady = false; }
+    function resetWebPlayer() {
+      if (webPlayer) {
+        try { webPlayer.disconnect(); } catch (error) { console.warn('Web-Player Disconnect fehlgeschlagen:', error); }
+      }
+      webPlayer = null;
+      webPlayerDeviceId = null;
+      webPlayerReady = false;
+      currentPlaybackMode = 'track';
+    }
+    function showLogin() { loading(''); $('login').style.display = 'block'; $('categories').style.display = 'none'; $('grid').innerHTML = ''; $('controls').style.display = 'none'; setDetail(false); markActive(null); resetWebPlayer(); }
+    function clearAuth() { localStorage.removeItem('access_token'); localStorage.removeItem('refresh_token'); localStorage.removeItem('oauth_scopes'); resetWebPlayer(); }
+    function hasRequiredScopes(scopeString) {
+      if (!scopeString) return false;
+      const scopes = new Set(scopeString.split(/\s+/).filter(Boolean));
+      return REQUIRED_SCOPES.every(scope => scopes.has(scope));
+    }
     function showNotice(message) {
       let notice = document.getElementById('player-notice');
       if (!notice) {
         notice = document.createElement('div');
         notice.id = 'player-notice';
+        notice.setAttribute('role', 'status');
+        notice.setAttribute('aria-live', 'assertive');
         notice.style.cssText = 'position:fixed;bottom:85px;left:50%;transform:translateX(-50%);z-index:200;max-width:90vw;background:#ff4d4d;color:#fff;padding:12px 24px;border-radius:20px;font-weight:bold;box-shadow:0 8px 25px rgba(0,0,0,.25);text-align:center';
         document.body.appendChild(notice);
       }
@@ -65,6 +83,10 @@
     function applyPlaybackState(isPlaying, item) {
       $('play-icon').style.display = isPlaying ? 'none' : 'block';
       $('pause-icon').style.display = isPlaying ? 'block' : 'none';
+      if (item) {
+        const uri = item?.uri || '';
+        currentPlaybackMode = item?.type === 'episode' || uri.startsWith('spotify:episode:') ? 'podcast' : 'track';
+      }
       const id = item?.id || item?.uri?.split(':').pop();
       if (id) {
         lastActive = { id: String(id), title: item?.name || lastActive?.title || 'Kein Titel aktiv' };
@@ -80,7 +102,7 @@
     }
     async function api(path, options = {}) {
       const r = await fetch('https://api.spotify.com/v1' + path, { ...options, headers: { Authorization: 'Bearer ' + token(), ...(options.headers || {}) } });
-      if (r.status === 401) { localStorage.removeItem('access_token'); showLogin(); throw Error('Nicht autorisiert'); }
+      if (r.status === 401) { clearAuth(); showLogin(); throw Error('Nicht autorisiert'); }
       return r;
     }
     function entry(item) { return item?.track || item?.item || item?.episode || null; }
@@ -106,7 +128,15 @@
     }
     function renderPlaylists() {
       const b = $('grid'), c = CATEGORIES.find(x => x.key === category), list = c ? playlists.filter(p => p.name.startsWith(c.prefix)) : playlists;
-      b.innerHTML = ''; if (!list.length) { b.innerHTML = '<p style="text-align:center;width:100%;color:#888">Keine Playlists gefunden.</p>'; loading(''); return; }
+      b.innerHTML = '';
+      if (!list.length) {
+        const empty = document.createElement('p');
+        empty.textContent = 'Keine Playlists gefunden.';
+        empty.style.cssText = 'text-align:center;width:100%;color:#888;grid-column:1/-1';
+        b.append(empty);
+        loading('');
+        return;
+      }
       list.forEach(p => {
         const type = CATEGORIES.find(x => p.name.startsWith(x.prefix));
         b.append(makeTile(cleanName(p.name), p.images?.[0]?.url, () => loadPlaylist(p.id, cleanName(p.name), type?.key === 'podcast'), p.id));
@@ -114,7 +144,8 @@
       loading(''); updatePlayer();
     }
     async function overview() {
-      const id = ++requestId; loading('Lade Playlists...'); $('login').style.display = 'none'; setDetail(false); $('title').textContent = 'KinderPlayer'; category = null;
+      const id = ++requestId; loading('Lade Playlists...'); $('login').style.display = 'none'; setDetail(false); $('title').textContent = 'KinderPlayer';
+      currentPlaybackMode = 'track';
       try {
         const d = await (await api('/me/playlists?limit=50')).json(); if (id !== requestId) return;
         playlists = (d.items || []).filter(p => p.name && CATEGORIES.some(c => p.name.startsWith(c.prefix)));
@@ -133,6 +164,7 @@
             const d = await r.json(); (d.items || []).forEach(ep => { if (ep?.id && !seen.has(ep.id)) { seen.add(ep.id); episodes.push(ep); } });
             next = d.next ? new URL(d.next).pathname + new URL(d.next).search : null;
           }
+          if (episodes.length > 0) return episodes;
         } catch (err) { console.warn('Show-Folgenabruf:', url, err); }
       }
       return episodes;
@@ -167,10 +199,13 @@
     async function loadPlaylist(id, title, isPodcast) {
       const current = ++requestId; loading('Lade Inhalte...'); $('categories').style.display = 'none'; setDetail(true); $('grid').innerHTML = ''; $('title').textContent = title;
       try {
-        const r = await api(`/playlists/${id}/items?limit=100`); if (current !== requestId) return;
-        if (!r.ok) throw Error('Playlist konnte nicht geladen werden');
-        const items = (await r.json()).items || []; if (!items.length) { loading('Keine Inhalte gefunden.'); return; }
-        if (isPodcast || category === 'podcast') {
+        const firstResponse = await api(`/playlists/${id}/items?limit=100`); if (current !== requestId) return;
+        if (!firstResponse.ok) throw Error('Playlist konnte nicht geladen werden');
+        const firstPage = await firstResponse.json();
+        let items = firstPage.items || [];
+        let next = firstPage.next ? new URL(firstPage.next).pathname + new URL(firstPage.next).search : null;
+        if (!items.length) { loading('Keine Inhalte gefunden.'); return; }
+        if (isPodcast) {
           const showId = await resolveShowId(items, title);
           if (showId) {
             const episodes = await fetchShowEpisodes(showId);
@@ -181,11 +216,19 @@
             }
           }
         }
+        while (next) {
+          const r = await api(next); if (current !== requestId) return;
+          if (!r.ok) throw Error('Playlist konnte nicht geladen werden');
+          const d = await r.json();
+          items = items.concat(d.items || []);
+          next = d.next ? new URL(d.next).pathname + new URL(d.next).search : null;
+        }
         let rendered = 0;
         items.forEach(raw => {
           const e = entry(raw); if (!e) return;
+          const isEpisodeItem = e.type === 'episode' || String(e.uri || '').startsWith('spotify:episode:');
           rendered++; const image = e.album?.images?.[0]?.url || e.images?.[0]?.url || '';
-          $('grid').append(makeTile(e.name, image, restart => isPodcast ? playEpisode(e, restart) : playTrack(id, e), e.id, isPodcast));
+          $('grid').append(makeTile(e.name, image, restart => (isPodcast || isEpisodeItem) ? playEpisode(e, restart) : playTrack(id, e), e.id, isPodcast || isEpisodeItem));
         });
         if (current !== requestId) return;
         if (!rendered) { loading('Keine Folgen gefunden.'); return; }
@@ -196,8 +239,21 @@
     async function play(body) {
       const playUrl = webPlayerDeviceId ? `https://api.spotify.com/v1/me/player/play?device_id=${encodeURIComponent(webPlayerDeviceId)}` : 'https://api.spotify.com/v1/me/player/play';
       let r = await fetch(playUrl, { method: 'PUT', headers: { Authorization: 'Bearer ' + token(), 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-      if (!r.ok && webPlayerDeviceId) {
+      if (r.status === 401) {
+        clearAuth();
+        showLogin();
+        return r;
+      }
+      if (r.status === 404 && webPlayerDeviceId) {
+        webPlayerDeviceId = null;
+        webPlayerReady = false;
         r = await fetch('https://api.spotify.com/v1/me/player/play', { method: 'PUT', headers: { Authorization: 'Bearer ' + token(), 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+        if (r.status === 401) {
+          clearAuth();
+          showLogin();
+          return r;
+        }
+        if (!r.ok) showNotice('Web-Player nicht bereit oder Device-ID veraltet. Bitte Seite neu laden oder erneut anmelden.');
       }
       return r;
     }
@@ -205,6 +261,7 @@
       try {
         const r = await play({ context_uri: `spotify:playlist:${pid}`, offset: { uri: `spotify:track:${t.id}` } });
         if (r.ok) {
+          currentPlaybackMode = 'track';
           hideNotice();
           lastActive = { id: String(t.id), title: t.name };
           markActive(t.id);
@@ -220,10 +277,15 @@
     }
     async function playEpisode(e, restart) {
       const b = { uris: [`spotify:episode:${e.id}`] };
-      if (restart) b.position_ms = 0;
+      if (restart) {
+        b.position_ms = 0;
+      } else if (typeof e?.resume_point?.resume_position_ms === 'number' && e.resume_point.resume_position_ms > 0) {
+        b.position_ms = e.resume_point.resume_position_ms;
+      }
       try {
         const r = await play(b);
         if (r.ok) {
+          currentPlaybackMode = 'podcast';
           hideNotice();
           lastActive = { id: String(e.id), title: e.name };
           markActive(e.id);
@@ -238,16 +300,18 @@
       }
     }
     async function updatePlayer() {
+      if (!token()) return;
       try {
         const r = await fetch('https://api.spotify.com/v1/me/player', { headers: { Authorization: 'Bearer ' + token() } });
         if (r.status === 200) {
           const d = await r.json(); $('controls').style.display = 'block'; applyPlaybackState(d.is_playing, d.item);
         } else if (r.status === 204) { applyPlaybackState(false, null); }
+        else if (r.status === 401) { clearAuth(); showLogin(); }
       } catch (error) { if (lastActive) { $('now').textContent = lastActive.title; markActive(lastActive.id); } }
     }
     async function control(action) {
       try {
-        if (webPlayer && webPlayerReady && (action === 'next' || action === 'previous')) {
+        if (currentPlaybackMode !== 'podcast' && webPlayer && webPlayerReady && (action === 'next' || action === 'previous')) {
           await (action === 'next' ? webPlayer.nextTrack() : webPlayer.previousTrack());
           hideNotice();
           setTimeout(updatePlayer, 500);
@@ -257,10 +321,32 @@
         console.warn('Web Playback SDK Steuerung fehlgeschlagen, nutze Fallback:', error);
       }
       const r = await fetch('https://api.spotify.com/v1/me/player/' + action, { method: action === 'next' || action === 'previous' ? 'POST' : 'PUT', headers: { Authorization: 'Bearer ' + token() } });
+      if (r.status === 401) {
+        clearAuth();
+        showNotice('Token ungültig. Bitte erneut anmelden.');
+        showLogin();
+        return;
+      }
+      if (r.status === 404) {
+        showNotice('Kein aktiver Player gefunden. Bitte zuerst einen Titel starten.');
+        return;
+      }
       if (!r.ok) showNotice('Steuerung fehlgeschlagen. Bitte Spotify-App prüfen.');
       setTimeout(updatePlayer, 500);
     }
     function randomString(length) { const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~', values = new Uint8Array(length); crypto.getRandomValues(values); return Array.from(values, value => chars[value % chars.length]).join(''); }
+    async function activateWebPlayerDevice(deviceId) {
+      try {
+        const r = await fetch('https://api.spotify.com/v1/me/player', {
+          method: 'PUT',
+          headers: { Authorization: 'Bearer ' + token(), 'Content-Type': 'application/json' },
+          body: JSON.stringify({ device_ids: [deviceId], play: false })
+        });
+        if (!r.ok && r.status !== 204) console.warn('Device-Transfer fehlgeschlagen:', r.status);
+      } catch (error) {
+        console.warn('Device-Transfer Fehler:', error);
+      }
+    }
     function initWebPlayer() {
       if (webPlayer || !window.Spotify) return;
       webPlayer = new window.Spotify.Player({
@@ -272,26 +358,32 @@
         webPlayerDeviceId = device_id;
         webPlayerReady = true;
         hideNotice();
+        activateWebPlayerDevice(device_id);
         updatePlayer();
       });
       webPlayer.addListener('not_ready', ({ device_id }) => {
         if (webPlayerDeviceId === device_id) webPlayerDeviceId = null;
         webPlayerReady = false;
       });
-      webPlayer.addListener('initialization_error', ({ message }) => showNotice(`SDK-Initialisierung fehlgeschlagen: ${message}`));
+      webPlayer.addListener('initialization_error', ({ message }) => { console.warn('Spotify initialization_error:', message); showNotice('Web-Player konnte nicht initialisiert werden.'); });
       webPlayer.addListener('authentication_error', ({ message }) => {
-        showNotice(`Spotify-Anmeldung ungültig: ${message}. Bitte erneut anmelden.`);
-        localStorage.removeItem('access_token');
+        console.warn('Spotify authentication_error:', message);
+        clearAuth();
+        showNotice('Spotify-Anmeldung ungültig. Bitte erneut anmelden.');
         showLogin();
       });
-      webPlayer.addListener('account_error', ({ message }) => showNotice(`Spotify-Konto kann Web Playback nicht nutzen: ${message}`));
-      webPlayer.addListener('playback_error', ({ message }) => showNotice(`Wiedergabefehler: ${message}`));
+      webPlayer.addListener('account_error', ({ message }) => { console.warn('Spotify account_error:', message); showNotice('Dieses Spotify-Konto kann Web Playback nicht nutzen.'); });
+      webPlayer.addListener('playback_error', ({ message }) => { console.warn('Spotify playback_error:', message); showNotice('Wiedergabe fehlgeschlagen. Bitte erneut versuchen.'); });
       webPlayer.addListener('player_state_changed', state => {
         if (!state) return;
         $('controls').style.display = 'block';
         applyPlaybackState(!state.paused, state.track_window?.current_track);
       });
-      webPlayer.connect().catch(error => console.error('Web Playback Connect Fehler:', error));
+      webPlayer.connect().catch(error => {
+        console.error('Web Playback Connect Fehler:', error);
+        resetWebPlayer();
+        showNotice('Web-Player konnte nicht verbunden werden. Nutze Standard-Spotify-Player.');
+      });
     }
     window.onSpotifyWebPlaybackSDKReady = () => initWebPlayer();
     async function login() {
@@ -301,31 +393,92 @@
       location.href = 'https://accounts.spotify.com/authorize?' + p;
     }
     async function exchange(code) {
-      const p = new URLSearchParams({ client_id: CLIENT_ID, grant_type: 'authorization_code', code, redirect_uri: REDIRECT_URI, code_verifier: localStorage.getItem('pkce') });
-      const r = await fetch('https://accounts.spotify.com/api/token', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: p });
-      const d = await r.json();
-      if (d.access_token) {
-        localStorage.setItem('access_token', d.access_token);
-        history.replaceState({}, document.title, location.pathname);
-        initWebPlayer();
-        overview();
-      } else {
-        showNotice('Autorisierung fehlgeschlagen. Nach Scope-Änderungen bitte erneut anmelden.');
+      try {
+        const verifier = localStorage.getItem('pkce');
+        if (!verifier) {
+          history.replaceState({}, document.title, location.pathname);
+          showNotice('Anmeldung abgelaufen. Bitte erneut bei Spotify anmelden.');
+          showLogin();
+          return;
+        }
+        const p = new URLSearchParams({ client_id: CLIENT_ID, grant_type: 'authorization_code', code, redirect_uri: REDIRECT_URI, code_verifier: verifier });
+        const r = await fetch('https://accounts.spotify.com/api/token', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: p });
+        const d = await r.json();
+        if (d.access_token) {
+          localStorage.setItem('access_token', d.access_token);
+          if (d.refresh_token) localStorage.setItem('refresh_token', d.refresh_token);
+          localStorage.setItem('oauth_scopes', d.scope || OAUTH_SCOPE);
+          localStorage.removeItem('pkce');
+          history.replaceState({}, document.title, location.pathname);
+          initWebPlayer();
+          overview();
+        } else {
+          localStorage.removeItem('pkce');
+          showNotice('Autorisierung fehlgeschlagen. Nach Scope-Änderungen bitte erneut anmelden.');
+          showLogin();
+        }
+      } catch (error) {
+        console.error('Token-Tausch fehlgeschlagen:', error);
+        localStorage.removeItem('pkce');
+        showNotice('Autorisierung fehlgeschlagen. Bitte erneut anmelden.');
         showLogin();
       }
     }
     $('login').onclick = login; $('back').onclick = overview; $('previous').onclick = () => control('previous'); $('next').onclick = () => control('next'); $('toggle').onclick = async () => {
-      if (webPlayer && webPlayerReady) {
-        try { await webPlayer.togglePlay(); hideNotice(); setTimeout(updatePlayer, 500); return; } catch (error) { console.warn('SDK Toggle fehlgeschlagen, nutze Fallback:', error); }
+      try {
+        const r = await fetch('https://api.spotify.com/v1/me/player', { headers: { Authorization: 'Bearer ' + token() } });
+        if (r.status === 200) {
+          const d = await r.json();
+          if (webPlayer && webPlayerReady && d.device?.id === webPlayerDeviceId) {
+            try {
+              await webPlayer.togglePlay();
+              hideNotice();
+              setTimeout(updatePlayer, 500);
+              return;
+            } catch (error) {
+              console.warn('SDK Toggle fehlgeschlagen, nutze Fallback:', error);
+            }
+          }
+          await control(d.is_playing ? 'pause' : 'play');
+        } else if (r.status === 204) {
+          showNotice('Kein aktiver Titel. Bitte einen Titel über eine Kachel starten.');
+        } else if (r.status === 404) {
+          showNotice('Kein aktiver Player gefunden. Bitte zuerst einen Titel starten.');
+        } else if (r.status === 401) {
+          showNotice('Token ungültig. Bitte erneut anmelden.');
+          clearAuth();
+          showLogin();
+        } else {
+          showNotice('Player-Status konnte nicht geladen werden.');
+        }
+      } catch (error) {
+        console.error('Fehler beim Umschalten von Play/Pause:', error);
+        showNotice('Play/Pause konnte nicht ausgeführt werden.');
       }
-      const r = await fetch('https://api.spotify.com/v1/me/player', { headers: { Authorization: 'Bearer ' + token() } });
-      if (r.status === 200) { const d = await r.json(); control(d.is_playing ? 'pause' : 'play'); } else showNotice('Kein aktiver Player gefunden. Bitte nach Scope-Änderung erneut anmelden.');
     };
     (async () => {
-      const code = new URLSearchParams(location.search).get('code'); if (code) return exchange(code);
-      const t = localStorage.getItem('access_token'); if (!t) return showLogin();
-      const r = await fetch('https://api.spotify.com/v1/me', { headers: { Authorization: 'Bearer ' + t } });
-      if (r.ok) { initWebPlayer(); overview(); } else showLogin();
+      try {
+        const params = new URLSearchParams(location.search);
+        const authError = params.get('error');
+        if (authError) {
+          history.replaceState({}, document.title, location.pathname);
+          showNotice('Spotify-Autorisierung fehlgeschlagen. Bitte erneut anmelden.');
+          return showLogin();
+        }
+        const code = params.get('code'); if (code) return exchange(code);
+        const t = localStorage.getItem('access_token'); if (!t) return showLogin();
+        const storedScopes = localStorage.getItem('oauth_scopes');
+        if (storedScopes && !hasRequiredScopes(storedScopes)) {
+          clearAuth();
+          showNotice('Neue Berechtigungen erforderlich. Bitte erneut bei Spotify anmelden.');
+          return showLogin();
+        }
+        const r = await fetch('https://api.spotify.com/v1/me', { headers: { Authorization: 'Bearer ' + t } });
+        if (r.ok) { initWebPlayer(); overview(); } else { clearAuth(); showLogin(); }
+      } catch (error) {
+        console.error('Initialisierung fehlgeschlagen:', error);
+        showLogin();
+      }
     })();
     setInterval(updatePlayer, 5000);
   </script>
