@@ -109,23 +109,33 @@ let currentPodcastEpisodes = [], currentPodcastIndex = -1;
     }
     function entry(item) { return item?.track || item?.item || item?.episode || null; }
     function cleanName(name) { const p = CATEGORIES.find(c => name.startsWith(c.prefix)); return p ? name.slice(p.prefix.length).trim() : name; }
-    function makeTile(title, image, onClick, id, isPodcast = false, description = '') {
-      const t = document.createElement('div'); t.className = 'tile'; t.dataset.trackId = String(id || ''); t.onclick = () => onClick(false);
-      const img = document.createElement('img'); img.src = image || ''; img.alt = '';
-      const label = document.createElement('div'); label.className = 'tile-title'; label.textContent = title;
-      t.append(img, label);
-      if (description) {
-        const desc = document.createElement('div');
-        desc.style.cssText = 'margin-top:6px;color:#b3b3b3;font-size:.8rem;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden';
-        desc.textContent = description;
-        t.append(desc);
-      }
-      if (isPodcast) {
-        const b = document.createElement('button'); b.type = 'button'; b.className = 'restart-btn'; b.textContent = '↺ Von Anfang an';
-        b.onclick = e => { e.stopPropagation(); onClick(true); }; t.append(b);
-      }
-      return t;
-    }
+   // Vorher: t.dataset.trackId = String(id || '');
+// Nachher: Nimmt Einzel-ID oder ID-Liste entgegen
+function makeTile(title, image, onClick, id, isPodcast = false, description = '') {
+  const t = document.createElement('div'); 
+  t.className = 'tile'; 
+  
+  // IDs als komma-getrennten String speichern (z.B. "id1,id2,id3")
+  const idString = Array.isArray(id) ? id.join(',') : String(id || '');
+  t.dataset.trackId = idString; 
+  
+  t.onclick = () => onClick(false);
+  const img = document.createElement('img'); img.src = image || ''; img.alt = '';
+  const label = document.createElement('div'); label.className = 'tile-title'; label.textContent = title;
+  t.append(img, label);
+  
+  if (description) {
+    const desc = document.createElement('div');
+    desc.style.cssText = 'margin-top:6px;color:#b3b3b3;font-size:.8rem;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden';
+    desc.textContent = description;
+    t.append(desc);
+  }
+  if (isPodcast) {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'restart-btn'; b.textContent = '↺ Von Anfang an';
+    b.onclick = e => { e.stopPropagation(); onClick(true); }; t.append(b);
+  }
+  return t;
+}
     function normalizeEpisodeTitle(title) { return String(title || '').replace(/\s+/g, ' ').trim(); }
     function normalizeForKey(value) {
       return normalizeEpisodeTitle(value).toLocaleLowerCase('de-DE').replace(/[–—]/g, '-').replace(/\s+/g, ' ');
@@ -277,7 +287,19 @@ let currentPodcastEpisodes = [], currentPodcastIndex = -1;
         renderCategories(); renderPlaylists();
       } catch (e) { if (id === requestId) { console.error(e); loading('Fehler beim Laden der Playlists.'); } }
     }
-    function markActive(id) { const x = id == null ? null : String(id); document.querySelectorAll('.tile').forEach(t => t.classList.toggle('active', x !== null && t.dataset.trackId === x)); }
+    function markActive(id) { 
+  const currentId = id == null ? null : String(id); 
+  document.querySelectorAll('.tile').forEach(t => {
+    if (!currentId) {
+      t.classList.remove('active');
+      return;
+    }
+    // Prüft, ob die aktuelle ID in der Komma-Liste der Kachel enthalten ist
+    const tileIds = (t.dataset.trackId || '').split(',');
+    const isActive = tileIds.includes(currentId);
+    t.classList.toggle('active', isActive);
+  }); 
+}
 
     async function fetchShowEpisodes(showId) {
       const episodes = [], seen = new Set();
@@ -426,20 +448,32 @@ async function loadPlaylist(id, title, categoryKey) {
          next = d.next ? d.next.replace('https://api.spotify.com/v1', '') : null;
         }
         
-        if (isAudioDrama) {
-          const groupedEpisodes = groupChaptersByEpisode(items);
-          if (groupedEpisodes.length) {
-            const b = $('grid'); b.innerHTML = '';
-            groupedEpisodes.forEach(group => {
-              const firstEpisode = group.episodes[0];
-              const image = firstEpisode.album?.images?.[0]?.url || firstEpisode.images?.[0]?.url || '';
-              b.append(makeTile(group.title || firstEpisode.name, image, restart => playEpisodeGroup(group, id, restart), firstEpisode.id, true, firstEpisode.description || ''));
-            });
-            loading(''); $('controls').style.display = 'block'; updatePlayer(); return;
-          }
-          loading(AUDIO_GROUPING_EMPTY_MESSAGE);
-          return;
-        }
+if (isAudioDrama) {
+  const groupedEpisodes = groupChaptersByEpisode(items);
+  if (groupedEpisodes.length) {
+    const b = $('grid'); b.innerHTML = '';
+    groupedEpisodes.forEach(group => {
+      const firstEpisode = group.episodes[0];
+      const image = firstEpisode.album?.images?.[0]?.url || firstEpisode.images?.[0]?.url || '';
+      
+      // NEU: Alle IDs der Kapitel in ein Array sammeln
+      const allChapterIds = group.episodes.map(ep => ep.id);
+
+      // allChapterIds statt nur firstEpisode.id übergeben:
+      b.append(makeTile(
+        group.title || firstEpisode.name, 
+        image, 
+        restart => playEpisodeGroup(group, id, restart), 
+        allChapterIds, // <-- Hier das Array mit allen Kapitel-IDs
+        true, 
+        firstEpisode.description || ''
+      ));
+    });
+    loading(''); $('controls').style.display = 'block'; updatePlayer(); return;
+  }
+  loading(AUDIO_GROUPING_EMPTY_MESSAGE);
+  return;
+}
         
         let rendered = 0;
         items.forEach(raw => {
