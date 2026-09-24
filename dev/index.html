@@ -305,8 +305,13 @@
         .map(group => ({ ...group, entries: [...group.entries].sort((a, b) => a.index - b.index) }))
         .sort((a, b) => a.entries[0].index - b.entries[0].index)
         .map(group => {
+          const chapterEntries = group.entries
+            .filter(entry => Number.isInteger(entry.meta?.chapterNumber))
+            .sort((a, b) => (a.meta.chapterNumber - b.meta.chapterNumber) || (a.index - b.index));
+          const specialEntries = group.entries.filter(entry => !Number.isInteger(entry.meta?.chapterNumber));
+          const orderedEntries = chapterEntries.concat(specialEntries);
           const titleFromSummary = group.entries.find(entry => entry.meta?.specialType === 'summary' && entry.meta.cleanedTitle)?.meta.cleanedTitle;
-          return { key: group.key, title: titleFromSummary || group.displayName, episodes: group.entries.map(e => e.episode) };
+          return { key: group.key, title: titleFromSummary || group.displayName, episodes: orderedEntries.map(e => e.episode) };
         });
     }
     function renderCategories() {
