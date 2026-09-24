@@ -247,7 +247,7 @@
           isComplete = false;
         } else if (group.explicitTotals.size === 1) {
           const expected = [...group.explicitTotals][0];
-          isComplete = hasContiguousChapters(chapterNumbers, expected);
+          isComplete = hasContiguousPlaylistBlock(group.chapterEntries) && hasContiguousChapters(chapterNumbers, expected);
         } else if (group.explicitTotals.size > 1) {
           isComplete = false;
         } else {
