@@ -119,19 +119,20 @@
       padding: 2px 6px;
       border-radius: 10px;
     }
-    .bottom-player {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      height: 80px;
-      background: #181818;
-      border-top: 1px solid #282828;
-      display: flex;
-      align-items: center;
-      padding: 0 15px;
-      z-index: 100;
-    }
+  .bottom-player {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 120px; /* Höhe eventuell leicht anpassen, falls nötig */
+  background: #181818;
+  border-top: 1px solid #282828;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 15px;
+  z-index: 100;
+}
     .player-img {
       width: 55px;
       height: 55px;
@@ -159,28 +160,33 @@
       overflow: hidden;
       text-overflow: ellipsis;
     }
-    .player-controls {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-    .player-button {
-      background: none;
-      border: 0;
-      color: #fff;
-      cursor: pointer;
-      padding: 8px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .play-pause-btn {
-      background: #fff;
-      color: #000;
-      border-radius: 50%;
-      width: 45px;
-      height: 45px;
-    }
+   .player-controls {
+  display: flex;
+  flex-direction: column; /* Vertikale Ausrichtung der Buttons */
+  align-items: center;    /* Horizontale Zentrierung der Buttons zueinander */
+  justify-content: center;
+  gap: 8px;
+}
+.player-button {
+  background: none;
+  border: 0;
+  color: #fff;
+  cursor: pointer;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+  .play-pause-btn {
+  background: #1db954; /* Oder #fff */
+  color: #fff;
+  border-radius: 50%;
+  width: 55px;         /* Vergrößerter Play-Button */
+  height: 55px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
     .section-title {
       padding: 15px 15px 5px 15px;
       font-size: 1.1rem;
