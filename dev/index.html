@@ -262,7 +262,7 @@
         group.entries.push(item);
       });
       return [...completeGroups.values()]
-        .map(group => ({ ...group, entries: group.entries.sort((a, b) => a.index - b.index) }))
+        .map(group => ({ ...group, entries: [...group.entries].sort((a, b) => a.index - b.index) }))
         .sort((a, b) => a.entries[0].index - b.entries[0].index)
         .map(group => ({ key: group.key, title: group.displayName, episodes: group.entries.map(e => e.episode) }));
     }
