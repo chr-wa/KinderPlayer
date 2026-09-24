@@ -281,11 +281,19 @@
           if (candidates.length === 1) {
             group = candidates[0];
           } else if (candidates.length > 1) {
-            const ranked = candidates
-              .map(candidate => ({ candidate, distance: Math.min(...candidate.chapterEntries.map(entry => Math.abs(entry.index - item.index))) }))
-              .sort((a, b) => a.distance - b.distance);
-            if (ranked[0].distance <= 2 && (!ranked[1] || ranked[0].distance < ranked[1].distance)) {
-              group = ranked[0].candidate;
+            let best = null;
+            let second = null;
+            candidates.forEach(candidate => {
+              const distance = Math.min(...candidate.chapterEntries.map(entry => Math.abs(entry.index - item.index)));
+              if (!best || distance < best.distance) {
+                second = best;
+                best = { candidate, distance };
+              } else if (!second || distance < second.distance) {
+                second = { candidate, distance };
+              }
+            });
+            if (best && best.distance <= 2 && (!second || best.distance < second.distance)) {
+              group = best.candidate;
             }
           }
         }
