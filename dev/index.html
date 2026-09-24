@@ -45,8 +45,6 @@
     const REQUIRED_SCOPES = ['streaming', 'user-read-email', 'user-read-private', 'user-read-playback-state', 'user-modify-playback-state'];
     const $ = id => document.getElementById(id), token = () => localStorage.getItem('access_token');
     let playlists = [], category = null, requestId = 0, lastActive = null, webPlayer = null, webPlayerDeviceId = null, webPlayerReady = false, currentPlaybackMode = 'track';
-let playlists = [], category = null, requestId = 0, lastActive = null, webPlayer = null, webPlayerDeviceId = null, webPlayerReady = false, currentPlaybackMode = 'track';
-    // NEU: Speicher für die aktuelle Podcast-Episoden-Liste & den aktiven Index
     let currentPodcastEpisodes = [], currentPodcastIndex = -1;
     function loading(text) { $('loading').textContent = text || ''; $('loading').style.display = text ? 'block' : 'none'; }
     function setDetail(v) { $('nav').style.display = v ? 'block' : 'none'; document.body.classList.toggle('detail', v); $('categories').classList.toggle('sticky', !v); }
@@ -83,13 +81,18 @@ let playlists = [], category = null, requestId = 0, lastActive = null, webPlayer
       const notice = document.getElementById('player-notice');
       if (notice) notice.style.display = 'none';
     }
-    function applyPlaybackState(isPlaying, item) {
+function applyPlaybackState(isPlaying, item) {
       $('play-icon').style.display = isPlaying ? 'none' : 'block';
       $('pause-icon').style.display = isPlaying ? 'block' : 'none';
+      
       if (item) {
         const uri = item?.uri || '';
-        currentPlaybackMode = item?.type === 'episode' || uri.startsWith('spotify:episode:') ? 'podcast' : 'track';
+        const isEpisode = item?.type === 'episode' || uri.startsWith('spotify:episode:');
+        if (isEpisode) {
+          currentPlaybackMode = 'podcast';
+        }
       }
+      
       const id = item?.id || item?.uri?.split(':').pop();
       if (id) {
         lastActive = { id: String(id), title: item?.name || lastActive?.title || 'Kein Titel aktiv' };
@@ -531,22 +534,30 @@ async function playEpisode(e, restart, index = -1) {
 async function control(action) {
       if (action === 'next' || action === 'previous') {
 
-        // 1. Spezielles Handling für Podcasts (Smart Skip über eigenes Array)
-        if (currentPlaybackMode === 'podcast' && currentPodcastEpisodes.length > 0 && currentPodcastIndex !== -1) {
-          let targetIndex = action === 'next' ? currentPodcastIndex + 1 : currentPodcastIndex - 1;
+        // Wenn Episoden vorliegen, behandeln wir die Wiedergabe bevorzugt als Podcast
+        const isPodcastMode = currentPlaybackMode === 'podcast' || currentPodcastEpisodes.length > 0;
 
-          if (targetIndex >= 0 && targetIndex < currentPodcastEpisodes.length) {
-            const targetEpisode = currentPodcastEpisodes[targetIndex];
-            console.log(`Podcast-Skip (${action}): Wechsle zu Episode Index ${targetIndex} (${targetEpisode.name})`);
-            await playEpisode(targetEpisode, true, targetIndex);
-            return;
-          } else {
-            showNotice(action === 'next' ? 'Das ist bereits die neueste Folge.' : 'Das ist bereits die erste Folge.');
-            return;
+        if (isPodcastMode && currentPodcastEpisodes.length > 0) {
+          // Falls der Index durch Sync verloren ging, anhand des letzten aktiven Titels suchen
+          if (currentPodcastIndex === -1 && lastActive?.id) {
+            currentPodcastIndex = currentPodcastEpisodes.findIndex(ep => String(ep.id) === String(lastActive.id));
+          }
+
+          if (currentPodcastIndex !== -1) {
+            let targetIndex = action === 'next' ? currentPodcastIndex + 1 : currentPodcastIndex - 1;
+
+            if (targetIndex >= 0 && targetIndex < currentPodcastEpisodes.length) {
+              const targetEpisode = currentPodcastEpisodes[targetIndex];
+              await playEpisode(targetEpisode, true, targetIndex);
+              return;
+            } else {
+              showNotice(action === 'next' ? 'Das ist bereits die neueste Folge.' : 'Das ist bereits die erste Folge.');
+              return;
+            }
           }
         }
 
-        // 2. Standard-Handling für Musik & Hörspiele via Web Playback SDK
+        // Standard-Handling für Musik & Hörspiele via Web Playback SDK
         if (webPlayer && webPlayerReady) {
           try {
             if (action === 'next') {
@@ -562,7 +573,7 @@ async function control(action) {
           }
         }
 
-        // 3. Fallback über die Spotify Web API
+        // Fallback über die Spotify Web API
         try {
           const r = await fetch(`https://api.spotify.com/v1/me/player/${action}`, {
             method: 'POST',
