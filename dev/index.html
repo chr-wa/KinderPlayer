@@ -287,16 +287,20 @@ function makeTile(title, image, onClick, id, isPodcast = false, description = ''
         renderCategories(); renderPlaylists();
       } catch (e) { if (id === requestId) { console.error(e); loading('Fehler beim Laden der Playlists.'); } }
     }
-    function markActive(id) { 
-  const currentId = id == null ? null : String(id); 
+
+  function markActive(id) { 
+  if (!id) {
+    document.querySelectorAll('.tile').forEach(t => t.classList.remove('active'));
+    return;
+  }
+
+  // Wandelt 'id' immer in ein Array von Strings um (egal ob 'id1', ['id1', 'id2'] übergeben wird)
+  const targetIds = Array.isArray(id) ? id.map(String) : String(id).split(',');
+
   document.querySelectorAll('.tile').forEach(t => {
-    if (!currentId) {
-      t.classList.remove('active');
-      return;
-    }
-    // Prüft, ob die aktuelle ID in der Komma-Liste der Kachel enthalten ist
     const tileIds = (t.dataset.trackId || '').split(',');
-    const isActive = tileIds.includes(currentId);
+    // Prüft, ob mindestens eine der gesuchten IDs in den IDs der Kachel enthalten ist
+    const isActive = tileIds.some(tileId => targetIds.includes(tileId));
     t.classList.toggle('active', isActive);
   }); 
 }
@@ -364,54 +368,57 @@ async function enqueueEpisode(episodeId) {
     }
 
 async function playEpisodeGroup(group, playlistId, restart) {
-      const episodes = group?.episodes || [];
-      if (!episodes.length) {
-        showNotice('Fehler: Keine Kapitel in dieser Folge gefunden.');
-        return;
+  const episodes = group?.episodes || [];
+  if (!episodes.length) {
+    showNotice('Fehler: Keine Kapitel in dieser Folge gefunden.');
+    return;
+  }
+
+  const firstEpisode = episodes[0];
+  if (!firstEpisode || !firstEpisode.id) {
+    showNotice('Fehler: Kapitel-ID ungültig.');
+    return;
+  }
+
+  // NEU: Alle Kapitel-IDs der Gruppe sammeln
+  const allChapterIds = episodes.map(ep => ep.id);
+
+  // KORREKTUR: allChapterIds übergeben statt nur firstEpisode.id
+  lastActive = { id: allChapterIds, title: group.title || firstEpisode.name };
+  $('now').textContent = lastActive.title;
+  markActive(allChapterIds); // <-- Hier allChapterIds übergeben!
+
+  // 2. Ersten Titel über die bestehende playTrack-Logik mit Playlist-Kontext starten
+  const isRealEpisode = firstEpisode.type === 'episode' || String(firstEpisode.uri || '').startsWith('spotify:episode:');
+  
+  let started = false;
+  if (isRealEpisode) {
+    started = await playEpisode(firstEpisode, restart);
+  } else {
+    started = await playTrack(playlistId, firstEpisode);
+  }
+
+  if (!started && !isRealEpisode) return;
+
+  // 3. Folgekapitel in die Queue einreihen
+  if (episodes.length < 2) return;
+  await new Promise(resolve => setTimeout(resolve, 800));
+
+  let queued = 0;
+  for (const episode of episodes.slice(1)) {
+    if (!episode || !episode.id) continue;
+    try {
+      const queueResponse = await enqueueEpisode(episode.id);
+      if (queueResponse.ok) {
+        queued++;
+        await new Promise(r => setTimeout(r, 200));
       }
-
-      const firstEpisode = episodes[0];
-      if (!firstEpisode || !firstEpisode.id) {
-        showNotice('Fehler: Kapitel-ID ungültig.');
-        return;
-      }
-
-      // 1. Sofortiges UI Feedback
-      lastActive = { id: String(firstEpisode.id), title: group.title || firstEpisode.name };
-      $('now').textContent = lastActive.title;
-      markActive(firstEpisode.id);
-
-      // 2. Ersten Titel über die bestehende playTrack-Logik mit Playlist-Kontext starten
-      const isRealEpisode = firstEpisode.type === 'episode' || String(firstEpisode.uri || '').startsWith('spotify:episode:');
-      
-      let started = false;
-      if (isRealEpisode) {
-        started = await playEpisode(firstEpisode, restart);
-      } else {
-        // Nutzt den funktionierenden Weg aus der alten Version
-        started = await playTrack(playlistId, firstEpisode);
-      }
-
-      if (!started && !isRealEpisode) return; // playTrack liefert keinen Return-Wert, startet aber zuverlässig
-
-      // 3. Folgekapitel in die Queue einreihen
-      if (episodes.length < 2) return;
-      await new Promise(resolve => setTimeout(resolve, 800));
-
-      let queued = 0;
-      for (const episode of episodes.slice(1)) {
-        if (!episode || !episode.id) continue;
-        try {
-          const queueResponse = await enqueueEpisode(episode.id);
-          if (queueResponse.ok) {
-            queued++;
-            await new Promise(r => setTimeout(r, 200));
-          }
-        } catch (error) {
-          console.warn('Queueing Fehler:', error);
-        }
-      }
+    } catch (error) {
+      console.warn('Queueing Fehler:', error);
     }
+  }
+}
+    
 async function loadPlaylist(id, title, categoryKey) {
       const current = ++requestId; loading('Lade Inhalte...'); $('categories').style.display = 'none'; setDetail(true); $('grid').innerHTML = '';$('title').textContent = title;
       const isPodcast = categoryKey === 'podcast';
