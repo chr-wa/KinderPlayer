@@ -40,7 +40,7 @@
   <script src="https://sdk.scdn.co/spotify-player.js"></script>
   <script>
     const CLIENT_ID = 'a6c7e7f802d043c29cce919b9e0c7f45', REDIRECT_URI = 'https://chr-wa.github.io/KinderPlayer/', CATEGORIES = [{key:'music',label:'Musik',prefix:'[KPM]'},{key:'audio',label:'Hörspiele',prefix:'[KPH]'},{key:'podcast',label:'Podcasts',prefix:'[KPP]'}];
-    const AUDIO_GROUPING_EMPTY_MESSAGE = 'Keine vollständigen Folgen erkannt. Bitte alle Kapitel einer Folge zur Playlist hinzufügen.';
+    const AUDIO_GROUPING_EMPTY_MESSAGE = 'Keine Hörspiele in dieser Playlist gefunden.';
     const OAUTH_SCOPE = 'streaming user-read-email user-read-private user-read-playback-state user-modify-playback-state playlist-read-private playlist-read-collaborative';
     const REQUIRED_SCOPES = ['streaming', 'user-read-email', 'user-read-private', 'user-read-playback-state', 'user-modify-playback-state'];
     const $ = id => document.getElementById(id), token = () => localStorage.getItem('access_token');
@@ -143,11 +143,10 @@
         .replace(/\s*[:\-–—]\s*(?:kapitel|teil)\s*0*\d+(?:\s*\/\s*0*\d+)?\s*$/i, '')
         .trim();
     }
-function parseAudioEpisodeMeta(title) {
+    function parseAudioEpisodeMeta(title) {
       const normalized = normalizeEpisodeTitle(title);
       if (!normalized) return null;
 
-      // Erkenne Folgennummer (z. B. "Folge 1", "Folge 104a", etc.)
       const folgeMatch = normalized.match(/\bfolge\s*(\d+[a-z]?)\b/i);
       const folgeNumber = folgeMatch ? folgeMatch[1].toLocaleLowerCase('de-DE') : null;
 
@@ -191,45 +190,8 @@ function parseAudioEpisodeMeta(title) {
 
       return { normalized, folgeNumber, chapterNumber, chapterTotal, cleanedTitle, storyTitle, storyKey, specialType };
     }
-    function getAudioEpisodeContextKey(episode) {
-      const album = normalizeForKey(episode?.album?.name || episode?.show?.name || '');
-      const artist = normalizeForKey(
-        (episode?.album?.artists || []).map(a => a?.name).filter(Boolean).join(' | ') ||
-        episode?.show?.publisher ||
-        ''
-      );
-      return `${album}::${artist}`;
-    }
-    function getAudioEpisodeStoryScopeKey(episode, meta) {
-      if (!episode?.id || !meta?.storyKey) return null;
-      return `${getAudioEpisodeContextKey(episode)}::${meta.storyKey}`;
-    }
-    function getAudioEpisodeGroupKey(episode, meta) {
-      const storyScope = getAudioEpisodeStoryScopeKey(episode, meta);
-      if (!storyScope) return null;
-      const folgePart = meta.folgeNumber ? `folge:${meta.folgeNumber}` : 'folge:';
-      return `${storyScope}::${folgePart}`;
-    }
-    function hasContiguousChapters(numbers, expectedTotal) {
-      if (!numbers.length) return false;
-      const uniqueSorted = [...new Set(numbers)].sort((a, b) => a - b);
-      const target = expectedTotal ?? uniqueSorted[uniqueSorted.length - 1];
-      if (target < 1 || uniqueSorted[0] !== 1) return false;
-      if (uniqueSorted.length !== target) return false;
-      for (let i = 0; i < target; i++) {
-        if (uniqueSorted[i] !== i + 1) return false;
-      }
-      return true;
-    }
-    function hasContiguousPlaylistBlock(entries) {
-      if (!entries.length) return false;
-      const sortedIndices = entries.map(e => e.index).sort((a, b) => a - b);
-      for (let i = 1; i < sortedIndices.length; i++) {
-        if (sortedIndices[i] - sortedIndices[i - 1] !== 1) return false;
-      }
-      return true;
-    }
-function groupChaptersByEpisode(items) {
+
+    function groupChaptersByEpisode(items) {
       if (!items || !items.length) return [];
 
       const groupsMap = new Map();
@@ -241,7 +203,6 @@ function groupChaptersByEpisode(items) {
         const meta = parseAudioEpisodeMeta(e.name);
         const albumOrShow = e.album?.name || e.show?.name || 'Hörspiel';
         
-        // Schlüssel für die Gruppierung erstellen
         let groupKey = '';
         let displayTitle = '';
 
@@ -271,7 +232,6 @@ function groupChaptersByEpisode(items) {
         });
       });
 
-      // Nach Kapitelnummer bzw. Original-Playlist-Reihenfolge sortieren
       return Array.from(groupsMap.values()).map(group => {
         group.episodes.sort((a, b) => (a.chapterNumber - b.chapterNumber) || (a.index - b.index));
         return {
@@ -281,23 +241,7 @@ function groupChaptersByEpisode(items) {
         };
       });
     }
-Und in der Funktion loadPlaylist den Hörspiel-Abschnitt (if (isAudioDrama)) vereinfachen zu:
 
-JavaScript
-        if (isAudioDrama) {
-          const groupedEpisodes = groupChaptersByEpisode(items);
-          if (groupedEpisodes.length) {
-            const b = $('grid'); b.innerHTML = '';
-            groupedEpisodes.forEach(group => {
-              const firstEpisode = group.episodes[0];
-              const image = firstEpisode.album?.images?.[0]?.url || firstEpisode.images?.[0]?.url || '';
-              b.append(makeTile(group.title || firstEpisode.name, image, restart => playEpisodeGroup(group, restart), firstEpisode.id, true, firstEpisode.description || ''));
-            });
-            loading(''); $('controls').style.display = 'block'; updatePlayer(); return;
-          }
-          loading(AUDIO_GROUPING_EMPTY_MESSAGE);
-          return;
-        }
     function renderCategories() {
       const b = $('categories'); b.innerHTML = '';
       CATEGORIES.forEach(c => {
@@ -324,7 +268,7 @@ JavaScript
       loading(''); updatePlayer();
     }
     async function overview() {
-      const id = ++requestId; loading('Lade Playlists...'); $('login').style.display = 'none'; setDetail(false); $('title').textContent = 'KinderPlayer';
+      const id = ++requestId; loading('Lade Playlists...'); $('login').style.display = 'none'; setDetail(false);$('title').textContent = 'KinderPlayer';
       currentPlaybackMode = 'track';
       try {
         const d = await (await api('/me/playlists?limit=50')).json(); if (id !== requestId) return;
@@ -414,7 +358,7 @@ JavaScript
       }
     }
     async function loadPlaylist(id, title, categoryKey) {
-      const current = ++requestId; loading('Lade Inhalte...'); $('categories').style.display = 'none'; setDetail(true); $('grid').innerHTML = ''; $('title').textContent = title;
+      const current = ++requestId; loading('Lade Inhalte...'); $('categories').style.display = 'none'; setDetail(true); $('grid').innerHTML = '';$('title').textContent = title;
       const isPodcast = categoryKey === 'podcast';
       const isAudioDrama = categoryKey === 'audio';
       try {
@@ -443,13 +387,12 @@ JavaScript
           next = d.next ? new URL(d.next).pathname + new URL(d.next).search : null;
         }
         if (isAudioDrama) {
-          const episodes = items.map(entry).filter(e => e?.id && (e.type === 'episode' || String(e.uri || '').startsWith('spotify:episode:')));
-          const groupedEpisodes = groupChaptersByEpisode(episodes);
+          const groupedEpisodes = groupChaptersByEpisode(items);
           if (groupedEpisodes.length) {
             const b = $('grid'); b.innerHTML = '';
             groupedEpisodes.forEach(group => {
               const firstEpisode = group.episodes[0];
-              const image = firstEpisode.images?.[0]?.url || '';
+              const image = firstEpisode.album?.images?.[0]?.url || firstEpisode.images?.[0]?.url || '';
               b.append(makeTile(group.title || firstEpisode.name, image, restart => playEpisodeGroup(group, restart), firstEpisode.id, true, firstEpisode.description || ''));
             });
             loading(''); $('controls').style.display = 'block'; updatePlayer(); return;
@@ -659,7 +602,7 @@ JavaScript
         showLogin();
       }
     }
-    $('login').onclick = login; $('back').onclick = overview; $('previous').onclick = () => control('previous'); $('next').onclick = () => control('next'); $('toggle').onclick = async () => {
+    $('login').onclick = login; $('back').onclick = overview; $('previous').onclick = () => control('previous'); $('next').onclick = () => control('next');$('toggle').onclick = async () => {
       try {
         const r = await fetch('https://api.spotify.com/v1/me/player', { headers: { Authorization: 'Bearer ' + token() } });
         if (r.status === 200) {
