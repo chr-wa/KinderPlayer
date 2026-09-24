@@ -287,7 +287,7 @@ let currentPodcastEpisodes = [], currentPodcastIndex = -1;
           while (next) {
             const r = await api(next); if (!r.ok) throw Error(String(r.status));
             const d = await r.json(); (d.items || []).forEach(ep => { if (ep?.id && !seen.has(ep.id)) { seen.add(ep.id); episodes.push(ep); } });
-            next = d.next ? new URL(d.next).pathname + new URL(d.next).search : null;
+            next = d.next ? d.next.replace('https://api.spotify.com/v1', '') : null;
           }
           if (episodes.length > 0) return episodes;
         } catch (err) { console.warn('Show-Folgenabruf:', url, err); }
@@ -399,7 +399,7 @@ async function loadPlaylist(id, title, categoryKey) {
         if (!firstResponse.ok) throw Error('Playlist konnte nicht geladen werden');
         const firstPage = await firstResponse.json();
         let items = firstPage.items || [];
-        let next = firstPage.next ? new URL(firstPage.next).pathname + new URL(firstPage.next).search : null;
+        let next = firstPage.next ? firstPage.next.replace('https://api.spotify.com/v1', '') : null;
         if (!items.length) { loading('Keine Inhalte gefunden.'); return; }
         
         if (isPodcast) {
@@ -423,7 +423,7 @@ async function loadPlaylist(id, title, categoryKey) {
           if (!r.ok) throw Error('Playlist konnte nicht geladen werden');
           const d = await r.json();
           items = items.concat(d.items || []);
-          next = d.next ? new URL(d.next).pathname + new URL(d.next).search : null;
+         next = d.next ? d.next.replace('https://api.spotify.com/v1', '') : null;
         }
         
         if (isAudioDrama) {
