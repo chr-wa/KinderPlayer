@@ -45,7 +45,8 @@
     const REQUIRED_SCOPES = ['streaming', 'user-read-email', 'user-read-private', 'user-read-playback-state', 'user-modify-playback-state'];
     const $ = id => document.getElementById(id), token = () => localStorage.getItem('access_token');
     let playlists = [], category = null, requestId = 0, lastActive = null, webPlayer = null, webPlayerDeviceId = null, webPlayerReady = false, currentPlaybackMode = 'track';
-
+let currentPodcastEpisodes = [], currentPodcastIndex = -1;
+    
     function loading(text) { $('loading').textContent = text || ''; $('loading').style.display = text ? 'block' : 'none'; }
     function setDetail(v) { $('nav').style.display = v ? 'block' : 'none'; document.body.classList.toggle('detail', v); $('categories').classList.toggle('sticky', !v); }
     function resetWebPlayer() {
@@ -389,7 +390,7 @@ async function playEpisodeGroup(group, playlistId, restart) {
         }
       }
     }
-    async function loadPlaylist(id, title, categoryKey) {
+async function loadPlaylist(id, title, categoryKey) {
       const current = ++requestId; loading('Lade Inhalte...'); $('categories').style.display = 'none'; setDetail(true); $('grid').innerHTML = '';$('title').textContent = title;
       const isPodcast = categoryKey === 'podcast';
       const isAudioDrama = categoryKey === 'audio';
@@ -400,17 +401,23 @@ async function playEpisodeGroup(group, playlistId, restart) {
         let items = firstPage.items || [];
         let next = firstPage.next ? new URL(firstPage.next).pathname + new URL(firstPage.next).search : null;
         if (!items.length) { loading('Keine Inhalte gefunden.'); return; }
+        
         if (isPodcast) {
           const showId = await resolveShowId(items, title);
           if (showId) {
             const episodes = await fetchShowEpisodes(showId);
             if (episodes.length > 0) {
+              // Podcast-Episoden-Liste speichern
+              currentPodcastEpisodes = episodes;
+              currentPodcastIndex = -1;
+
               const b = $('grid'); b.innerHTML = '';
-              episodes.forEach(ep => b.append(makeTile(ep.name, ep.images?.[0]?.url, restart => playEpisode(ep, restart), ep.id, true)));
+              episodes.forEach((ep, idx) => b.append(makeTile(ep.name, ep.images?.[0]?.url, restart => playEpisode(ep, restart, idx), ep.id, true)));
               loading(''); $('controls').style.display = 'block'; updatePlayer(); return;
             }
           }
         }
+        
         while (next) {
           const r = await api(next); if (current !== requestId) return;
           if (!r.ok) throw Error('Playlist konnte nicht geladen werden');
@@ -418,21 +425,22 @@ async function playEpisodeGroup(group, playlistId, restart) {
           items = items.concat(d.items || []);
           next = d.next ? new URL(d.next).pathname + new URL(d.next).search : null;
         }
+        
         if (isAudioDrama) {
           const groupedEpisodes = groupChaptersByEpisode(items);
           if (groupedEpisodes.length) {
             const b = $('grid'); b.innerHTML = '';
-        groupedEpisodes.forEach(group => {
-  const firstEpisode = group.episodes[0];
-  const image = firstEpisode.album?.images?.[0]?.url || firstEpisode.images?.[0]?.url || '';
-  // Übergibt jetzt zusätzlich 'id' (die Playlist-ID) an playEpisodeGroup
-  b.append(makeTile(group.title || firstEpisode.name, image, restart => playEpisodeGroup(group, id, restart), firstEpisode.id, true, firstEpisode.description || ''));
-});
+            groupedEpisodes.forEach(group => {
+              const firstEpisode = group.episodes[0];
+              const image = firstEpisode.album?.images?.[0]?.url || firstEpisode.images?.[0]?.url || '';
+              b.append(makeTile(group.title || firstEpisode.name, image, restart => playEpisodeGroup(group, id, restart), firstEpisode.id, true, firstEpisode.description || ''));
+            });
             loading(''); $('controls').style.display = 'block'; updatePlayer(); return;
           }
           loading(AUDIO_GROUPING_EMPTY_MESSAGE);
           return;
         }
+        
         let rendered = 0;
         items.forEach(raw => {
           const e = entry(raw); if (!e) return;
@@ -444,6 +452,69 @@ async function playEpisodeGroup(group, playlistId, restart) {
         if (!rendered) { loading('Keine Folgen gefunden.'); return; }
         loading(''); $('controls').style.display = 'block'; updatePlayer();
       } catch (e) { if (current !== requestId) return; console.error(e); if (!$('grid').children.length) loading('Fehler beim Laden der Inhalte.'); else loading(''); }
+    }
+
+
+    // 3. playEpisode komplett
+    async function playEpisode(e, restart, index = -1) {
+      if (!e || !e.id) {
+        console.warn('playEpisode: Ungültiges Episode/Track-Objekt', e);
+        return false;
+      }
+
+      // Index für die Podcast-Steuerung verwalten
+      if (index !== -1) {
+        currentPodcastIndex = index;
+      } else if (currentPodcastEpisodes.length > 0) {
+        const foundIdx = currentPodcastEpisodes.findIndex(item => item.id === e.id);
+        if (foundIdx !== -1) currentPodcastIndex = foundIdx;
+      }
+
+      // Dynamische URI-Ermittlung
+      const uri = e.uri || (e.type === 'episode' ? `spotify:episode:${e.id}` : `spotify:track:${e.id}`);
+      const body = { uris: [uri] };
+
+      if (restart) {
+        body.position_ms = 0;
+      } else if (typeof e?.resume_point?.resume_position_ms === 'number' && e.resume_point.resume_position_ms > 0) {
+        body.position_ms = e.resume_point.resume_position_ms;
+      }
+
+      try {
+        const r = await play(body);
+        if (r.ok) {
+          currentPlaybackMode = 'podcast';
+          hideNotice();
+          lastActive = { id: String(e.id), title: e.name };
+          markActive(e.id);
+          $('now').textContent = e.name;
+          setTimeout(updatePlayer, 500);
+          return true;
+        }
+
+        if (r.status === 403) {
+          console.warn('403 bei uris-Wiedergabe, versuche Fallback...');
+          const fallbackResponse = await play({ uris: [`spotify:track:${e.id}`] });
+          if (fallbackResponse.ok) {
+            currentPlaybackMode = 'podcast';
+            hideNotice();
+            lastActive = { id: String(e.id), title: e.name };
+            markActive(e.id);
+            $('now').textContent = e.name;
+            setTimeout(updatePlayer, 500);
+            return true;
+          }
+          showNotice('Keine Berechtigung für diesen Inhalt (403). Ist ein Spotify Premium Account aktiv?');
+        } else if (r.status === 404) {
+          showNotice('Kein aktiver Player gefunden. Bitte erneut anmelden oder Spotify-App öffnen.');
+        } else {
+          showNotice(`Wiedergabe fehlgeschlagen (Status ${r.status}).`);
+        }
+      } catch (error) {
+        console.error('Episoden-Wiedergabe Fehler:', error);
+        showNotice('Episode konnte nicht gestartet werden.');
+      }
+      return false;
     }
 
     async function play(body) {
@@ -549,9 +620,25 @@ async function playTrack(pid, t) {
         else if (r.status === 401) { clearAuth(); showLogin(); }
       } catch (error) { if (lastActive) { $('now').textContent = lastActive.title; markActive(lastActive.id); } }
     }
- async function control(action) {
+
+async function control(action) {
       if (action === 'next' || action === 'previous') {
-        // 1. Versuche Steuerung direkt über das Web Playback SDK (funktioniert für Tracks, Hörspiele & Podcasts)
+
+        // Eigene Navigation für Podcasts über das Episoden-Array
+        if (currentPlaybackMode === 'podcast' && currentPodcastEpisodes.length > 0 && currentPodcastIndex !== -1) {
+          let nextIndex = action === 'next' ? currentPodcastIndex + 1 : currentPodcastIndex - 1;
+
+          if (nextIndex >= 0 && nextIndex < currentPodcastEpisodes.length) {
+            const nextEpisode = currentPodcastEpisodes[nextIndex];
+            await playEpisode(nextEpisode, false, nextIndex);
+            return;
+          } else {
+            showNotice(action === 'next' ? 'Ende der Podcast-Liste erreicht.' : 'Anfang der Podcast-Liste erreicht.');
+            return;
+          }
+        }
+
+        // 1. Versuche Steuerung direkt über das Web Playback SDK (Musik & Hörspiele)
         if (webPlayer && webPlayerReady) {
           try {
             if (action === 'next') {
@@ -567,7 +654,7 @@ async function playTrack(pid, t) {
           }
         }
 
-        // 2. Fallback über die Spotify Web API, falls Web SDK nicht aktiv/bereit ist
+        // 2. Fallback über die Spotify Web API
         try {
           const r = await fetch(`https://api.spotify.com/v1/me/player/${action}`, {
             method: 'POST',
@@ -614,6 +701,7 @@ async function playTrack(pid, t) {
       if (!r.ok) showNotice('Steuerung fehlgeschlagen.');
       setTimeout(updatePlayer, 500);
     }
+    
     function randomString(length) { const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~', values = new Uint8Array(length); crypto.getRandomValues(values); return Array.from(values, value => chars[value % chars.length]).join(''); }
     async function activateWebPlayerDevice(deviceId) {
       try {
