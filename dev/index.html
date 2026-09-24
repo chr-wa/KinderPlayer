@@ -1,199 +1,13 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>KinderPlayer</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Kinder Player</title>
+  <link rel="manifest" href="manifest.json">
   <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-    body {
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-      background: #121212;
-      color: #fff;
-      padding-bottom: 90px;
-    }
-    .view {
-      display: none;
-    }
-    .view.active {
-      display: block;
-    }
-    #login-view {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
-      text-align: center;
-      padding: 20px;
-    }
-    .login-btn {
-      background: #1db954;
-      color: #fff;
-      border: none;
-      padding: 15px 30px;
-      font-size: 1.2rem;
-      font-weight: bold;
-      border-radius: 30px;
-      cursor: pointer;
-      margin-top: 20px;
-      text-decoration: none;
-      display: inline-block;
-    }
-    header {
-      background: #181818;
-      padding: 15px 20px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      position: sticky;
-      top: 0;
-      z-index: 10;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-    }
-    header h1 {
-      font-size: 1.2rem;
-    }
-    .logout-btn {
-      background: #333;
-      color: #fff;
-      border: none;
-      padding: 8px 15px;
-      border-radius: 15px;
-      cursor: pointer;
-      font-size: 0.8rem;
-    }
-    .grid-container {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-      gap: 15px;
-      padding: 15px;
-    }
-    .tile {
-      background: #282828;
-      border-radius: 10px;
-      padding: 10px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      cursor: pointer;
-      transition: transform 0.1s, background-color 0.2s;
-      position: relative;
-      text-align: center;
-    }
-    .tile:active {
-      transform: scale(0.95);
-    }
-    .tile.active-playing {
-      background: #1db954;
-      color: #000;
-    }
-    .tile-img {
-      width: 100%;
-      aspect-ratio: 1;
-      object-fit: cover;
-      border-radius: 6px;
-      margin-bottom: 10px;
-      background: #333;
-    }
-    .tile-title {
-      font-weight: bold;
-      font-size: 0.85rem;
-      line-height: 1.2;
-      display: -webkit-box;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
-    }
-    .tile-badge {
-      position: absolute;
-      top: 15px;
-      right: 15px;
-      background: rgba(0,0,0,0.7);
-      color: #fff;
-      font-size: 0.7rem;
-      padding: 2px 6px;
-      border-radius: 10px;
-    }
-  .bottom-player {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 120px; /* Höhe eventuell leicht anpassen, falls nötig */
-  background: #181818;
-  border-top: 1px solid #282828;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 15px;
-  z-index: 100;
-}
-    .player-img {
-      width: 55px;
-      height: 55px;
-      border-radius: 4px;
-      object-fit: cover;
-      margin-right: 12px;
-      background: #333;
-    }
-    .player-info {
-      flex: 1;
-      overflow: hidden;
-      margin-right: 10px;
-    }
-    .player-title {
-      font-size: 0.9rem;
-      font-weight: bold;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .player-subtitle {
-      font-size: 0.75rem;
-      color: #b3b3b3;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-   .player-controls {
-  display: flex;
-  flex-direction: column; /* Vertikale Ausrichtung der Buttons */
-  align-items: center;    /* Horizontale Zentrierung der Buttons zueinander */
-  justify-content: center;
-  gap: 8px;
-}
-.player-button {
-  background: none;
-  border: 0;
-  color: #fff;
-  cursor: pointer;
-  padding: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-  .play-pause-btn {
-  background: #1db954; /* Oder #fff */
-  color: #fff;
-  border-radius: 50%;
-  width: 55px;         /* Vergrößerter Play-Button */
-  height: 55px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-    .section-title {
-      padding: 15px 15px 5px 15px;
-      font-size: 1.1rem;
-      color: #b3b3b3;
-    }
+    *{box-sizing:border-box;user-select:none;-webkit-user-select:none}body{margin:0;padding:20px 20px 125px;background:#121212;color:#fff;font-family:sans-serif;touch-action:pan-y}body.detail{padding-top:75px}h1{text-align:center;color:#1db954;font-size:1.8rem;margin:0 0 20px}.btn-login{display:block;margin:50px auto;padding:15px 30px;background:#1db954;color:#fff;border:0;border-radius:25px;font-size:1.2rem;font-weight:bold;cursor:pointer}.category-bar{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin-bottom:20px}.category-bar.sticky{position:sticky;top:10px;z-index:9;background:#121212;padding:10px 0;border-radius:12px}.category-tile{background:#282828;color:#fff;border:3px solid transparent;border-radius:12px;padding:12px 18px;font-weight:bold;cursor:pointer}.category-tile.active{border-color:#1db954;background:#333}.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:15px}.tile{position:relative;background:#282828;border:3px solid transparent;border-radius:12px;padding:10px;text-align:center;cursor:pointer;transition:.2s}.tile.active{border-color:#1db954!important;background:#333;transform:scale(1.03);box-shadow:0 4px 15px rgba(29,185,84,.4)}.tile img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;background:#333}.tile-title{margin-top:8px;font-size:.95rem;font-weight:bold;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.restart-btn{display:block;margin:10px auto 0;padding:7px 10px;background:#444;color:#fff;border:1px solid #777;border-radius:16px;font-size:.75rem;font-weight:bold;cursor:pointer}.loading{display:none;text-align:center;color:#888;font-size:1.1rem;margin:35px 0}.nav{display:none;position:fixed;top:15px;left:50%;transform:translateX(-50%);z-index:10;width:max-content;max-width:calc(100% - 30px)}.back-btn{background:#282828;color:#fff;border:1px solid rgba(255,255,255,.15);padding:10px 22px;border-radius:25px;font-size:.95rem;font-weight:bold;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px}.controls{display:none;position:fixed;bottom:15px;left:50%;transform:translateX(-50%);width:min(500px,calc(100% - 30px));z-index:20;background:rgba(24,24,24,.95);backdrop-filter:blur(8px);padding:12px 20px;border-radius:35px;box-shadow:0 4px 16px rgba(0,0,0,.25)}.player-controls-inner{display:flex;align-items:center;justify-content:center;gap:25px}.player-button{background:none;border:0;color:#fff;cursor:pointer;padding:10px;display:flex;align-items:center;justify-content:center}.player-button.primary{background:#1db954;width:64px;height:64px;border-radius:50%;padding:0}.now-playing{text-align:center;color:#e5e5e5;font-size:.85rem;font-weight:600;min-height:1.2em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 8px;margin-top:6px}
   </style>
-  <script src="https://sdk.scdn.co/spotify-player.js"></script>
 </head>
 <body>
   <h1 id="title">KinderPlayer</h1>
@@ -209,20 +23,15 @@
   </div>
   <div id="controls" class="controls">
     <div class="player-controls-inner">
-      <!-- Vorher: width/height 24 -->
       <button id="previous" class="player-button" type="button" aria-label="Vorheriger Titel">
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
       </button>
-
-      <!-- Vorher: width/height 22 -->
       <button id="toggle" class="player-button primary" type="button" aria-label="Abspielen/Pausieren">
-        <svg id="play-icon" width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-        <svg id="pause-icon" width="28" height="28" viewBox="0 0 24 24" fill="currentColor" style="display:none"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+        <svg id="play-icon" width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+        <svg id="pause-icon" width="32" height="32" viewBox="0 0 24 24" fill="currentColor" style="display:none"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
       </button>
-
-      <!-- Vorher: width/height 24 -->
       <button id="next" class="player-button" type="button" aria-label="Nächster Titel">
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
       </button>
     </div>
     <div id="now" class="now-playing">Kein Titel aktiv</div>
@@ -300,33 +109,23 @@ let currentPodcastEpisodes = [], currentPodcastIndex = -1;
     }
     function entry(item) { return item?.track || item?.item || item?.episode || null; }
     function cleanName(name) { const p = CATEGORIES.find(c => name.startsWith(c.prefix)); return p ? name.slice(p.prefix.length).trim() : name; }
-   // Vorher: t.dataset.trackId = String(id || '');
-// Nachher: Nimmt Einzel-ID oder ID-Liste entgegen
-function makeTile(title, image, onClick, id, isPodcast = false, description = '') {
-  const t = document.createElement('div'); 
-  t.className = 'tile'; 
-  
-  // IDs als komma-getrennten String speichern (z.B. "id1,id2,id3")
-  const idString = Array.isArray(id) ? id.join(',') : String(id || '');
-  t.dataset.trackId = idString; 
-  
-  t.onclick = () => onClick(false);
-  const img = document.createElement('img'); img.src = image || ''; img.alt = '';
-  const label = document.createElement('div'); label.className = 'tile-title'; label.textContent = title;
-  t.append(img, label);
-  
-  if (description) {
-    const desc = document.createElement('div');
-    desc.style.cssText = 'margin-top:6px;color:#b3b3b3;font-size:.8rem;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden';
-    desc.textContent = description;
-    t.append(desc);
-  }
-  if (isPodcast) {
-    const b = document.createElement('button'); b.type = 'button'; b.className = 'restart-btn'; b.textContent = '↺ Von Anfang an';
-    b.onclick = e => { e.stopPropagation(); onClick(true); }; t.append(b);
-  }
-  return t;
-}
+    function makeTile(title, image, onClick, id, isPodcast = false, description = '') {
+      const t = document.createElement('div'); t.className = 'tile'; t.dataset.trackId = String(id || ''); t.onclick = () => onClick(false);
+      const img = document.createElement('img'); img.src = image || ''; img.alt = '';
+      const label = document.createElement('div'); label.className = 'tile-title'; label.textContent = title;
+      t.append(img, label);
+      if (description) {
+        const desc = document.createElement('div');
+        desc.style.cssText = 'margin-top:6px;color:#b3b3b3;font-size:.8rem;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden';
+        desc.textContent = description;
+        t.append(desc);
+      }
+      if (isPodcast) {
+        const b = document.createElement('button'); b.type = 'button'; b.className = 'restart-btn'; b.textContent = '↺ Von Anfang an';
+        b.onclick = e => { e.stopPropagation(); onClick(true); }; t.append(b);
+      }
+      return t;
+    }
     function normalizeEpisodeTitle(title) { return String(title || '').replace(/\s+/g, ' ').trim(); }
     function normalizeForKey(value) {
       return normalizeEpisodeTitle(value).toLocaleLowerCase('de-DE').replace(/[–—]/g, '-').replace(/\s+/g, ' ');
@@ -478,23 +277,7 @@ function makeTile(title, image, onClick, id, isPodcast = false, description = ''
         renderCategories(); renderPlaylists();
       } catch (e) { if (id === requestId) { console.error(e); loading('Fehler beim Laden der Playlists.'); } }
     }
-
-  function markActive(id) { 
-  if (!id) {
-    document.querySelectorAll('.tile').forEach(t => t.classList.remove('active'));
-    return;
-  }
-
-  // Wandelt 'id' immer in ein Array von Strings um (egal ob 'id1', ['id1', 'id2'] übergeben wird)
-  const targetIds = Array.isArray(id) ? id.map(String) : String(id).split(',');
-
-  document.querySelectorAll('.tile').forEach(t => {
-    const tileIds = (t.dataset.trackId || '').split(',');
-    // Prüft, ob mindestens eine der gesuchten IDs in den IDs der Kachel enthalten ist
-    const isActive = tileIds.some(tileId => targetIds.includes(tileId));
-    t.classList.toggle('active', isActive);
-  }); 
-}
+    function markActive(id) { const x = id == null ? null : String(id); document.querySelectorAll('.tile').forEach(t => t.classList.toggle('active', x !== null && t.dataset.trackId === x)); }
 
     async function fetchShowEpisodes(showId) {
       const episodes = [], seen = new Set();
@@ -538,86 +321,75 @@ function makeTile(title, image, onClick, id, isPodcast = false, description = ''
       return null;
     }
 
-async function enqueueEpisode(item) {
-  const itemId = typeof item === 'object' ? item.id : item;
-  const itemType = (typeof item === 'object' && item.type) ? item.type : 'episode';
-  const uri = (typeof item === 'object' && item.uri) ? item.uri : `spotify:${itemType}:${itemId}`;
-
-  let queueUrl = `https://api.spotify.com/v1/me/player/queue?uri=${encodeURIComponent(uri)}`;
-  if (webPlayerDeviceId) {
-    queueUrl += `&device_id=${encodeURIComponent(webPlayerDeviceId)}`;
-  }
-
-  let response = await fetch(queueUrl, {
-    method: 'POST',
-    headers: { Authorization: 'Bearer ' + token() }
-  });
-
-  if (!response.ok && response.status !== 401) {
-    await new Promise(r => setTimeout(r, 600));
-    response = await fetch(queueUrl, {
-      method: 'POST',
-      headers: { Authorization: 'Bearer ' + token() }
-    });
-  }
-
-  if (response.status === 401) {
-    clearAuth();
-    showLogin();
-  }
-  return response;
-}
-
-async function playEpisodeGroup(playlistId, episodeGroupKey, restart = false) {
-  const meta = loadedPlaylistsMeta[playlistId];
-  if (!meta) return;
-
-  const group = meta.groups[episodeGroupKey];
-  if (!group || !group.episodes || group.episodes.length === 0) return;
-
-  const episodes = group.episodes;
-  const firstEpisode = episodes[0];
-  if (!firstEpisode) return;
-
-  activeMediaContext = {
-    type: 'episode-group',
-    playlistId: playlistId,
-    groupKey: episodeGroupKey,
-    firstEpisodeId: firstEpisode.id,
-    currentEpisodeId: firstEpisode.id
-  };
-  renderMainView();
-
-  const isRealEpisode = firstEpisode.type === 'episode' || String(firstEpisode.uri || '').startsWith('spotify:episode:');
-
-  let started = false;
-  if (isRealEpisode) {
-    started = await playEpisode(firstEpisode, restart);
-  } else {
-    started = await playTrack(playlistId, firstEpisode);
-  }
-
-  if (!started) return;
-
-  // Übergebe das gesamte Objekt 'episode' an enqueueEpisode, 
-  // um auch bei Tracks die korrekte URI (spotify:track:...) zu nutzen.
-  for (const episode of episodes.slice(1)) {
-    if (!episode || !episode.id) continue;
-    try {
-      const queueResponse = await enqueueEpisode(episode);
-      if (!queueResponse || !queueResponse.ok) {
-        console.warn('Queue abgebrochen/fehlgeschlagen bei:', episode);
-        break;
+async function enqueueEpisode(episodeId) {
+      const uri = `spotify:episode:${episodeId}`;
+      let queueUrl = `https://api.spotify.com/v1/me/player/queue?uri=${encodeURIComponent(uri)}`;
+      if (webPlayerDeviceId) queueUrl += `&device_id=${encodeURIComponent(webPlayerDeviceId)}`;
+      
+      let response = await fetch(queueUrl, { method: 'POST', headers: { Authorization: 'Bearer ' + token() } });
+      
+      // Fallback: Wenn der Aufruf fehlschlägt (z.B. 404 oder 429), einmalig 600ms warten und erneut versuchen
+      if (!response.ok && response.status !== 401) {
+        await new Promise(r => setTimeout(r, 600));
+        response = await fetch(`https://api.spotify.com/v1/me/player/queue?uri=${encodeURIComponent(uri)}`, { method: 'POST', headers: { Authorization: 'Bearer ' + token() } });
       }
-    } catch (e) {
-      console.warn('Fehler beim Befüllen der Queue:', e);
-      break;
+      
+      if (response.status === 401) {
+        clearAuth();
+        showLogin();
+      }
+      return response;
     }
-  }
 
-  setTimeout(() => updatePlayer(), 1000);
-}
-    
+async function playEpisodeGroup(group, playlistId, restart) {
+      const episodes = group?.episodes || [];
+      if (!episodes.length) {
+        showNotice('Fehler: Keine Kapitel in dieser Folge gefunden.');
+        return;
+      }
+
+      const firstEpisode = episodes[0];
+      if (!firstEpisode || !firstEpisode.id) {
+        showNotice('Fehler: Kapitel-ID ungültig.');
+        return;
+      }
+
+      // 1. Sofortiges UI Feedback
+      lastActive = { id: String(firstEpisode.id), title: group.title || firstEpisode.name };
+      $('now').textContent = lastActive.title;
+      markActive(firstEpisode.id);
+
+      // 2. Ersten Titel über die bestehende playTrack-Logik mit Playlist-Kontext starten
+      const isRealEpisode = firstEpisode.type === 'episode' || String(firstEpisode.uri || '').startsWith('spotify:episode:');
+      
+      let started = false;
+      if (isRealEpisode) {
+        started = await playEpisode(firstEpisode, restart);
+      } else {
+        // Nutzt den funktionierenden Weg aus der alten Version
+        started = await playTrack(playlistId, firstEpisode);
+      }
+
+      if (!started && !isRealEpisode) return; // playTrack liefert keinen Return-Wert, startet aber zuverlässig
+
+      // 3. Folgekapitel in die Queue einreihen
+      if (episodes.length < 2) return;
+      await new Promise(resolve => setTimeout(resolve, 800));
+
+      let queued = 0;
+      for (const episode of episodes.slice(1)) {
+        if (!episode || !episode.id) continue;
+        try {
+          const queueResponse = await enqueueEpisode(episode.id);
+          if (queueResponse.ok) {
+            queued++;
+            await new Promise(r => setTimeout(r, 200));
+          }
+        } catch (error) {
+          console.warn('Queueing Fehler:', error);
+        }
+      }
+    }
 async function loadPlaylist(id, title, categoryKey) {
       const current = ++requestId; loading('Lade Inhalte...'); $('categories').style.display = 'none'; setDetail(true); $('grid').innerHTML = '';$('title').textContent = title;
       const isPodcast = categoryKey === 'podcast';
@@ -654,32 +426,20 @@ async function loadPlaylist(id, title, categoryKey) {
          next = d.next ? d.next.replace('https://api.spotify.com/v1', '') : null;
         }
         
-if (isAudioDrama) {
-  const groupedEpisodes = groupChaptersByEpisode(items);
-  if (groupedEpisodes.length) {
-    const b = $('grid'); b.innerHTML = '';
-    groupedEpisodes.forEach(group => {
-      const firstEpisode = group.episodes[0];
-      const image = firstEpisode.album?.images?.[0]?.url || firstEpisode.images?.[0]?.url || '';
-      
-      // NEU: Alle IDs der Kapitel in ein Array sammeln
-      const allChapterIds = group.episodes.map(ep => ep.id);
-
-      // allChapterIds statt nur firstEpisode.id übergeben:
-      b.append(makeTile(
-        group.title || firstEpisode.name, 
-        image, 
-        restart => playEpisodeGroup(group, id, restart), 
-        allChapterIds, // <-- Hier das Array mit allen Kapitel-IDs
-        true, 
-        firstEpisode.description || ''
-      ));
-    });
-    loading(''); $('controls').style.display = 'block'; updatePlayer(); return;
-  }
-  loading(AUDIO_GROUPING_EMPTY_MESSAGE);
-  return;
-}
+        if (isAudioDrama) {
+          const groupedEpisodes = groupChaptersByEpisode(items);
+          if (groupedEpisodes.length) {
+            const b = $('grid'); b.innerHTML = '';
+            groupedEpisodes.forEach(group => {
+              const firstEpisode = group.episodes[0];
+              const image = firstEpisode.album?.images?.[0]?.url || firstEpisode.images?.[0]?.url || '';
+              b.append(makeTile(group.title || firstEpisode.name, image, restart => playEpisodeGroup(group, id, restart), firstEpisode.id, true, firstEpisode.description || ''));
+            });
+            loading(''); $('controls').style.display = 'block'; updatePlayer(); return;
+          }
+          loading(AUDIO_GROUPING_EMPTY_MESSAGE);
+          return;
+        }
         
         let rendered = 0;
         items.forEach(raw => {
