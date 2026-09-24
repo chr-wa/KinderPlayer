@@ -231,7 +231,7 @@
         if (isComplete) completeGroups.set(group.key, group);
       });
       const chapterGroupByIndex = new Map();
-      chapterGroups.forEach(group => group.chapterEntries.forEach(entry => chapterGroupByIndex.set(entry.index, group.key)));
+      completeGroups.forEach(group => group.chapterEntries.forEach(entry => chapterGroupByIndex.set(entry.index, group.key)));
       const findNearestChapterGroup = (startPosition, step) => {
         for (let i = startPosition; i >= 0 && i < parsed.length; i += step) {
           const key = chapterGroupByIndex.get(parsed[i].index);
