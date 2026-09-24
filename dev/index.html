@@ -231,6 +231,12 @@
         group.chapterEntries.push(item);
         if (item.meta.chapterTotal && item.meta.chapterTotal > 0) group.explicitTotals.add(item.meta.chapterTotal);
       });
+      const chapterGroupKeysByStoryScope = new Map();
+      chapterGroups.forEach(group => {
+        const keys = chapterGroupKeysByStoryScope.get(group.storyScopeKey) || new Set();
+        keys.add(group.key);
+        chapterGroupKeysByStoryScope.set(group.storyScopeKey, keys);
+      });
       const completeGroups = new Map();
       const completeGroupsByStoryScope = new Map();
       chapterGroups.forEach(group => {
@@ -242,9 +248,14 @@
         } else if (group.explicitTotals.size > 1) {
           isComplete = false;
         } else {
+          const competingGroupKeys = chapterGroupKeysByStoryScope.get(group.storyScopeKey) || new Set();
+          if (competingGroupKeys.size > 1) {
+            isComplete = false;
+          } else {
           const maxChapter = chapterNumbers.length ? Math.max(...chapterNumbers) : 0;
           const hasReliableBlock = hasContiguousPlaylistBlock(group.chapterEntries);
           isComplete = maxChapter >= 3 && hasReliableBlock && hasContiguousChapters(chapterNumbers, null);
+          }
         }
         if (isComplete) {
           completeGroups.set(group.key, group);
