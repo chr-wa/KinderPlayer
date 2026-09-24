@@ -304,7 +304,10 @@
       return [...completeGroups.values()]
         .map(group => ({ ...group, entries: [...group.entries].sort((a, b) => a.index - b.index) }))
         .sort((a, b) => a.entries[0].index - b.entries[0].index)
-        .map(group => ({ key: group.key, title: group.displayName, episodes: group.entries.map(e => e.episode) }));
+        .map(group => {
+          const titleFromSummary = group.entries.find(entry => entry.meta?.specialType === 'summary' && entry.meta.cleanedTitle)?.meta.cleanedTitle;
+          return { key: group.key, title: titleFromSummary || group.displayName, episodes: group.entries.map(e => e.episode) };
+        });
     }
     function renderCategories() {
       const b = $('categories'); b.innerHTML = '';
