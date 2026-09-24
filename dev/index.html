@@ -206,6 +206,14 @@
       }
       return true;
     }
+    function hasContiguousPlaylistBlock(entries) {
+      if (!entries.length) return false;
+      const sortedIndices = entries.map(e => e.index).sort((a, b) => a - b);
+      for (let i = 1; i < sortedIndices.length; i++) {
+        if (sortedIndices[i] - sortedIndices[i - 1] !== 1) return false;
+      }
+      return true;
+    }
     function groupChaptersByEpisode(episodes) {
       const parsed = episodes.map((episode, index) => ({ episode, index, meta: parseAudioEpisodeMeta(episode?.name || '') }))
         .filter(x => x.episode?.id && x.meta);
@@ -235,7 +243,8 @@
           isComplete = false;
         } else {
           const maxChapter = chapterNumbers.length ? Math.max(...chapterNumbers) : 0;
-          isComplete = maxChapter >= 2 && hasContiguousChapters(chapterNumbers, null);
+          const hasReliableBlock = hasContiguousPlaylistBlock(group.chapterEntries);
+          isComplete = maxChapter >= 3 && hasReliableBlock && hasContiguousChapters(chapterNumbers, null);
         }
         if (isComplete) {
           completeGroups.set(group.key, group);
