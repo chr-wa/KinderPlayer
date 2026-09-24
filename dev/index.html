@@ -327,9 +327,9 @@ async function enqueueEpisode(episodeId) {
       
       let response = await fetch(queueUrl, { method: 'POST', headers: { Authorization: 'Bearer ' + token() } });
       
-      // Fallback: Falls 404 (Player noch nicht bereit) zurückkommt, kurz warten und ohne Device-ID im URL-Parameter versuchen
-      if (response.status === 404) {
-        await new Promise(r => setTimeout(r, 500));
+      // Fallback: Wenn der Aufruf fehlschlägt (z.B. 404 oder 429), einmalig 600ms warten und erneut versuchen
+      if (!response.ok && response.status !== 401) {
+        await new Promise(r => setTimeout(r, 600));
         response = await fetch(`https://api.spotify.com/v1/me/player/queue?uri=${encodeURIComponent(uri)}`, { method: 'POST', headers: { Authorization: 'Bearer ' + token() } });
       }
       
@@ -339,7 +339,8 @@ async function enqueueEpisode(episodeId) {
       }
       return response;
     }
-async function playEpisodeGroup(group, restart) {
+
+    async function playEpisodeGroup(group, restart) {
       const episodes = group?.episodes || [];
       if (!episodes.length) return;
 
@@ -347,7 +348,7 @@ async function playEpisodeGroup(group, restart) {
       const started = await playEpisode(episodes[0], restart);
       if (!started || episodes.length < 2) return;
 
-      // 2. Kritische Pause: Dem Web-Player Zeit geben, die Wiedergabe zu starten und den Device-Status auf "active" zu setzen
+      // 2. Pause für Statuswechsel auf "active"
       await new Promise(resolve => setTimeout(resolve, 1000));
 
       let queued = 0;
@@ -356,22 +357,17 @@ async function playEpisodeGroup(group, restart) {
           const queueResponse = await enqueueEpisode(episode.id);
           if (queueResponse.ok) {
             queued++;
-            // Kurze Pause zwischen mehreren Queue-Aufrufen gegen Rate-Limiting
             await new Promise(r => setTimeout(r, 250));
-            continue;
-          }
-          if (queueResponse.status === 404) {
-            console.warn(`Queue 404 bei Folge ${episode.id}: Player war nicht bereit.`);
-            break;
+          } else {
+            console.warn(`Queueing fehlgeschlagen für Folge ${episode.id} mit Status ${queueResponse.status}`);
           }
         } catch (error) {
-          console.warn('Queueing fehlgeschlagen:', error);
-          break;
+          console.warn('Queueing Netzwerkerrorendpunkt:', error);
         }
       }
 
       if (queued !== episodes.length - 1) {
-        showNotice('Erstes Kapitel läuft. Weitere Kapitel konnten nicht vollständig zur Warteschlange hinzugefügt werden.');
+        showNotice('Erstes Kapitel läuft. Ein oder mehrere Folgekapitel konnten nicht zur Warteschlange hinzugefügt werden.');
       } else {
         hideNotice();
       }
