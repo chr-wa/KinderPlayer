@@ -549,18 +549,58 @@ async function playTrack(pid, t) {
         else if (r.status === 401) { clearAuth(); showLogin(); }
       } catch (error) { if (lastActive) { $('now').textContent = lastActive.title; markActive(lastActive.id); } }
     }
-    async function control(action) {
-      try {
-        if (currentPlaybackMode !== 'podcast' && webPlayer && webPlayerReady && (action === 'next' || action === 'previous')) {
-          await (action === 'next' ? webPlayer.nextTrack() : webPlayer.previousTrack());
-          hideNotice();
-          setTimeout(updatePlayer, 500);
-          return;
+ async function control(action) {
+      if (action === 'next' || action === 'previous') {
+        // 1. Versuche Steuerung direkt über das Web Playback SDK (funktioniert für Tracks, Hörspiele & Podcasts)
+        if (webPlayer && webPlayerReady) {
+          try {
+            if (action === 'next') {
+              await webPlayer.nextTrack();
+            } else {
+              await webPlayer.previousTrack();
+            }
+            hideNotice();
+            setTimeout(updatePlayer, 400);
+            return;
+          } catch (error) {
+            console.warn('Web Playback SDK Steuerung fehlgeschlagen, nutze API-Fallback:', error);
+          }
         }
-      } catch (error) {
-        console.warn('Web Playback SDK Steuerung fehlgeschlagen, nutze Fallback:', error);
+
+        // 2. Fallback über die Spotify Web API, falls Web SDK nicht aktiv/bereit ist
+        try {
+          const r = await fetch(`https://api.spotify.com/v1/me/player/${action}`, {
+            method: 'POST',
+            headers: { Authorization: 'Bearer ' + token() }
+          });
+
+          if (r.status === 401) {
+            clearAuth();
+            showNotice('Token ungültig. Bitte erneut anmelden.');
+            showLogin();
+            return;
+          }
+          if (r.status === 404) {
+            showNotice('Kein aktiver Player gefunden. Bitte zuerst einen Titel starten.');
+            return;
+          }
+          if (!r.ok) {
+            showNotice('Steuerung fehlgeschlagen. Bitte Spotify-App prüfen.');
+          }
+        } catch (error) {
+          console.error('API-Steuerung Fehler:', error);
+        }
+
+        setTimeout(updatePlayer, 500);
+        return;
       }
-      const r = await fetch('https://api.spotify.com/v1/me/player/' + action, { method: action === 'next' || action === 'previous' ? 'POST' : 'PUT', headers: { Authorization: 'Bearer ' + token() } });
+
+      // Für Play/Pause & andere Aktionen
+      const r = await fetch('https://api.spotify.com/v1/me/player/' + action, {
+        method: 'PUT',
+        headers: { Authorization: 'Bearer ' + token() }
+      });
+      
       if (r.status === 401) {
         clearAuth();
         showNotice('Token ungültig. Bitte erneut anmelden.');
@@ -571,7 +611,7 @@ async function playTrack(pid, t) {
         showNotice('Kein aktiver Player gefunden. Bitte zuerst einen Titel starten.');
         return;
       }
-      if (!r.ok) showNotice('Steuerung fehlgeschlagen. Bitte Spotify-App prüfen.');
+      if (!r.ok) showNotice('Steuerung fehlgeschlagen.');
       setTimeout(updatePlayer, 500);
     }
     function randomString(length) { const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~', values = new Uint8Array(length); crypto.getRandomValues(values); return Array.from(values, value => chars[value % chars.length]).join(''); }
