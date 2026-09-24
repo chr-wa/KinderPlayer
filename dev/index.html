@@ -275,7 +275,16 @@
           if (targetKey) group = completeGroups.get(targetKey) || null;
         } else {
           const candidates = completeGroupsByStoryScope.get(storyScopeKey) || [];
-          if (candidates.length === 1) group = candidates[0];
+          if (candidates.length === 1) {
+            group = candidates[0];
+          } else if (candidates.length > 1) {
+            const ranked = candidates
+              .map(candidate => ({ candidate, distance: Math.min(...candidate.chapterEntries.map(entry => Math.abs(entry.index - item.index))) }))
+              .sort((a, b) => a.distance - b.distance);
+            if (ranked[0].distance <= 2 && (!ranked[1] || ranked[0].distance < ranked[1].distance)) {
+              group = ranked[0].candidate;
+            }
+          }
         }
         if (!group) return;
         if (group.entries.some(entry => entry.episode?.id === item.episode?.id)) return;
