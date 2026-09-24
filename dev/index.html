@@ -258,6 +258,7 @@
         if (!targetKey) return;
         const group = completeGroups.get(targetKey);
         if (!group) return;
+        if (group.entries.some(entry => entry.episode?.id === item.episode?.id)) return;
         group.entries.push(item);
       });
       return [...completeGroups.values()]
