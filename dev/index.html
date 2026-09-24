@@ -311,7 +311,8 @@
           const specialEntries = group.entries.filter(entry => !Number.isInteger(entry.meta?.chapterNumber));
           const orderedEntries = chapterEntries.concat(specialEntries);
           const titleFromSummary = group.entries.find(entry => entry.meta?.specialType === 'summary' && entry.meta.cleanedTitle)?.meta.cleanedTitle;
-          return { key: group.key, title: titleFromSummary || group.displayName, episodes: orderedEntries.map(e => e.episode) };
+          const resolvedTitle = titleFromSummary && normalizeForKey(titleFromSummary) === normalizeForKey(group.displayName) ? titleFromSummary : group.displayName;
+          return { key: group.key, title: resolvedTitle, episodes: orderedEntries.map(e => e.episode) };
         });
     }
     function renderCategories() {
