@@ -41,7 +41,7 @@
   <script>
     const CLIENT_ID = 'a6c7e7f802d043c29cce919b9e0c7f45', REDIRECT_URI = 'https://chr-wa.github.io/KinderPlayer/', CATEGORIES = [{key:'music',label:'Musik',prefix:'[KPM]'},{key:'audio',label:'Hörspiele',prefix:'[KPH]'},{key:'podcast',label:'Podcasts',prefix:'[KPP]'}];
     const AUDIO_GROUPING_EMPTY_MESSAGE = 'Keine Hörspiele in dieser Playlist gefunden.';
-    const OAUTH_SCOPE = 'streaming user-read-email user-read-private user-read-playback-state user-modify-playback-state playlist-read-private playlist-read-collaborative';
+    const OAUTH_SCOPE = 'streaming user-read-email user-read-private user-read-playback-state user-modify-playback-state playlist-read-private playlist-read-collaborative user-read-playback-position';
     const REQUIRED_SCOPES = ['streaming', 'user-read-email', 'user-read-private', 'user-read-playback-state', 'user-modify-playback-state'];
     const $ = id => document.getElementById(id), token = () => localStorage.getItem('access_token');
     let playlists = [], category = null, requestId = 0, lastActive = null, webPlayer = null, webPlayerDeviceId = null, webPlayerReady = false, currentPlaybackMode = 'track';
@@ -486,14 +486,23 @@ async function playEpisodeGroup(group, restart) {
       }
     }
     async function playEpisode(e, restart) {
-      const b = { uris: [`spotify:episode:${e.id}`] };
-      if (restart) {
-        b.position_ms = 0;
-      } else if (typeof e?.resume_point?.resume_position_ms === 'number' && e.resume_point.resume_position_ms > 0) {
-        b.position_ms = e.resume_point.resume_position_ms;
+      if (!e || !e.id) {
+        console.warn('playEpisode: Ungültiges Episode/Track-Objekt', e);
+        return false;
       }
+
+      // Dynamische URI-Ermittlung: Verhindert 403 Forbidden bei gemischten Bibliothekstypen
+      const uri = e.uri || (e.type === 'episode' ? `spotify:episode:${e.id}` : `spotify:track:${e.id}`);
+      const body = { uris: [uri] };
+
+      if (restart) {
+        body.position_ms = 0;
+      } else if (typeof e?.resume_point?.resume_position_ms === 'number' && e.resume_point.resume_position_ms > 0) {
+        body.position_ms = e.resume_point.resume_position_ms;
+      }
+
       try {
-        const r = await play(b);
+        const r = await play(body);
         if (r.ok) {
           currentPlaybackMode = 'podcast';
           hideNotice();
@@ -503,9 +512,28 @@ async function playEpisodeGroup(group, restart) {
           setTimeout(updatePlayer, 500);
           return true;
         }
-        if (r.status === 404) showNotice('Kein aktiver Player gefunden. Bitte erneut anmelden oder Spotify-App öffnen.');
+
+        if (r.status === 403) {
+          // Fallback-Versuch: Falls uris[] mit 403 fehlschlägt, versuche den Kontext-Aufruf
+          console.warn('403 bei uris-Wiedergabe, versuche Fallback...');
+          const fallbackResponse = await play({ uris: [`spotify:track:${e.id}`] });
+          if (fallbackResponse.ok) {
+            currentPlaybackMode = 'podcast';
+            hideNotice();
+            lastActive = { id: String(e.id), title: e.name };
+            markActive(e.id);
+            $('now').textContent = e.name;
+            setTimeout(updatePlayer, 500);
+            return true;
+          }
+          showNotice('Keine Berechtigung für diesen Inhalt (403). Ist ein Spotify Premium Account aktiv?');
+        } else if (r.status === 404) {
+          showNotice('Kein aktiver Player gefunden. Bitte erneut anmelden oder Spotify-App öffnen.');
+        } else {
+          showNotice(`Wiedergabe fehlgeschlagen (Status ${r.status}).`);
+        }
       } catch (error) {
-        console.error('Episoden-Wiedergabe fehlgeschlagen:', error);
+        console.error('Episoden-Wiedergabe Fehler:', error);
         showNotice('Episode konnte nicht gestartet werden.');
       }
       return false;
