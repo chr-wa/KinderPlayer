@@ -172,7 +172,7 @@
       }
       const cleanedTitle = removeFolgeMarkers(working);
       const storyKey = normalizeForKey(cleanedTitle);
-      const isThemeLike = /\b(?:titellied|lied|intro|outro)\b/i.test(normalized);
+      const isThemeLike = /\b(?:titellied|intro|outro)\b/i.test(normalized);
       if (!specialType && isThemeLike) specialType = 'theme';
       return { normalized, folgeNumber, chapterNumber, chapterTotal, cleanedTitle, storyKey, specialType };
     }
@@ -230,31 +230,10 @@
         }
         if (isComplete) completeGroups.set(group.key, group);
       });
-      const chapterGroupByIndex = new Map();
-      completeGroups.forEach(group => group.chapterEntries.forEach(entry => chapterGroupByIndex.set(entry.index, group.key)));
-      const findNearestChapterGroup = (startPosition, step) => {
-        for (let i = startPosition; i >= 0 && i < parsed.length; i += step) {
-          const key = chapterGroupByIndex.get(parsed[i].index);
-          if (key) return { key, distance: Math.abs(i - startPosition) };
-        }
-        return null;
-      };
-      parsed.forEach((item, parsedIndex) => {
+      parsed.forEach(item => {
         if (item.meta.chapterNumber) return;
-        let targetKey = null;
-        if (item.meta.specialType === 'summary' && item.meta.storyKey) {
-          targetKey = getAudioEpisodeGroupKey(item.episode, item.meta);
-        } else if (item.meta.specialType) {
-          const prev = findNearestChapterGroup(parsedIndex - 1, -1);
-          const next = findNearestChapterGroup(parsedIndex + 1, 1);
-          if (prev && next) {
-            if (prev.key === next.key && Math.min(prev.distance, next.distance) <= 2) targetKey = prev.key;
-          } else if (next && next.distance <= 2) {
-            targetKey = next.key;
-          } else if (prev && prev.distance <= 2) {
-            targetKey = prev.key;
-          }
-        }
+        if (!item.meta.specialType || !item.meta.storyKey) return;
+        const targetKey = getAudioEpisodeGroupKey(item.episode, item.meta);
         if (!targetKey) return;
         const group = completeGroups.get(targetKey);
         if (!group) return;
