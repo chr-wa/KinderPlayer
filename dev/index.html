@@ -634,25 +634,43 @@
         showNotice('Play/Pause konnte nicht ausgeführt werden.');
       }
     };
-    (async () => {
+(async () => {
       try {
         const params = new URLSearchParams(location.search);
         const authError = params.get('error');
         if (authError) {
           history.replaceState({}, document.title, location.pathname);
           showNotice('Spotify-Autorisierung fehlgeschlagen. Bitte erneut anmelden.');
-          return showLogin();
+          showLogin();
+          return;
         }
-        const code = params.get('code'); if (code) return exchange(code);
-        const t = localStorage.getItem('access_token'); if (!t) return showLogin();
+
+        const code = params.get('code'); 
+        if (code) return exchange(code);
+
+        const t = localStorage.getItem('access_token'); 
+        if (!t) {
+          showLogin();
+          return;
+        }
+
         const storedScopes = localStorage.getItem('oauth_scopes');
         if (storedScopes && !hasRequiredScopes(storedScopes)) {
           clearAuth();
           showNotice('Neue Berechtigungen erforderlich. Bitte erneut bei Spotify anmelden.');
-          return showLogin();
+          showLogin();
+          return;
         }
+
         const r = await fetch('https://api.spotify.com/v1/me', { headers: { Authorization: 'Bearer ' + t } });
-        if (r.ok) { initWebPlayer(); overview(); } else { clearAuth(); showLogin(); }
+        if (r.ok) { 
+          $('login').style.display = 'none';
+          initWebPlayer(); 
+          overview(); 
+        } else { 
+          clearAuth(); 
+          showLogin(); 
+        }
       } catch (error) {
         console.error('Initialisierung fehlgeschlagen:', error);
         showLogin();
