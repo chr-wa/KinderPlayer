@@ -40,6 +40,7 @@
   <script src="https://sdk.scdn.co/spotify-player.js"></script>
   <script>
     const CLIENT_ID = 'a6c7e7f802d043c29cce919b9e0c7f45', REDIRECT_URI = 'https://chr-wa.github.io/KinderPlayer/', CATEGORIES = [{key:'music',label:'Musik',prefix:'[KPM]'},{key:'audio',label:'Hörspiele',prefix:'[KPH]'},{key:'podcast',label:'Podcasts',prefix:'[KPP]'}];
+    const AUDIO_GROUPING_EMPTY_MESSAGE = 'Keine vollständigen Folgen erkannt. Bitte alle Kapitel einer Folge zur Playlist hinzufügen.';
     const OAUTH_SCOPE = 'streaming user-read-email user-read-private user-read-playback-state user-modify-playback-state playlist-read-private playlist-read-collaborative';
     const REQUIRED_SCOPES = ['streaming', 'user-read-email', 'user-read-private', 'user-read-playback-state', 'user-modify-playback-state'];
     const $ = id => document.getElementById(id), token = () => localStorage.getItem('access_token');
@@ -125,36 +126,182 @@
       return t;
     }
     function normalizeEpisodeTitle(title) { return String(title || '').replace(/\s+/g, ' ').trim(); }
-    function getAudioEpisodeGroupKey(title) {
+    function normalizeForKey(value) {
+      return normalizeEpisodeTitle(value).toLocaleLowerCase('de-DE').replace(/[–—]/g, '-').replace(/\s+/g, ' ');
+    }
+    function removeFolgeMarkers(title) {
+      return normalizeEpisodeTitle(title)
+        .replace(/\(\s*folge\s*\d+[a-z]?\s*\)/gi, ' ')
+        .replace(/\bfolge\s*\d+[a-z]?\b/gi, ' ')
+        .replace(/\s+/g, ' ')
+        .replace(/\s*[-–—:|]\s*$/g, '')
+        .trim();
+    }
+    function normalizeStoryDisplayTitle(title) {
+      return normalizeEpisodeTitle(title)
+        .replace(/^(?:kapitel|teil)\s*0*\d+(?:\s*\/\s*0*\d+)?\s*[:\-–—]\s*/i, '')
+        .replace(/\s*[:\-–—]\s*(?:kapitel|teil)\s*0*\d+(?:\s*\/\s*0*\d+)?\s*$/i, '')
+        .trim();
+    }
+    function parseAudioEpisodeMeta(title) {
       const normalized = normalizeEpisodeTitle(title);
       if (!normalized) return null;
-      const isStandalonePart = /^(?:teil|kapitel)\s*\d+\b/i.test(normalized);
-      if (isStandalonePart) return null;
-      let grouped = normalized;
-      while (grouped) {
-        const trimmed = grouped.replace(/\s*(?:[-–—:|]\s*)?(?:teil|kapitel)\s*\d+[a-z]?\b(?:\s*\/\s*\d+)?\s*$/i, '').trim();
-        if (trimmed === grouped) break;
-        grouped = trimmed;
+      const folgeMatch = normalized.match(/\bfolge\s*(\d+[a-z]?)\b/i);
+      const folgeNumber = folgeMatch ? folgeMatch[1].toLocaleLowerCase('de-DE') : null;
+      let working = normalized;
+      let specialType = null;
+      const summaryMatch = working.match(/^\s*inhaltsangabe\s*[:\-–—]\s*(.+)$/i);
+      if (summaryMatch) {
+        specialType = 'summary';
+        working = normalizeEpisodeTitle(summaryMatch[1]);
       }
-      const hasFolgeMarker = /\bfolge\s*\d+[a-z]?\b/i.test(normalized);
-      if (grouped && (grouped !== normalized || hasFolgeMarker)) return grouped.toLocaleLowerCase('de-DE');
-      return null;
+      let chapterNumber = null;
+      let chapterTotal = null;
+      const chapterPatterns = [
+        { prefix: true, regex: /^(?:kapitel|teil)\s*0*(\d+)(?:\s*\/\s*0*(\d+))?\s*[:\-–—]\s*(.+)$/i },
+        { prefix: true, regex: /^(?:kapitel|teil)\s*0*(\d+)(?:\s*\/\s*0*(\d+))?\s+(.+)$/i },
+        { prefix: false, regex: /^(.+?)\s*[:\-–—]\s*(?:kapitel|teil)\s*0*(\d+)(?:\s*\/\s*0*(\d+))?\s*$/i },
+        { prefix: false, regex: /^(.+?)\s+(?:kapitel|teil)\s*0*(\d+)(?:\s*\/\s*0*(\d+))?\s*$/i }
+      ];
+      for (const pattern of chapterPatterns) {
+        const match = working.match(pattern.regex);
+        if (!match) continue;
+        if (pattern.prefix) {
+          chapterNumber = Number(match[1]);
+          chapterTotal = match[2] ? Number(match[2]) : null;
+          working = normalizeEpisodeTitle(match[3]);
+        } else {
+          chapterNumber = Number(match[2]);
+          chapterTotal = match[3] ? Number(match[3]) : null;
+          working = normalizeEpisodeTitle(match[1]);
+        }
+        break;
+      }
+      const cleanedTitle = removeFolgeMarkers(working);
+      const storyTitle = normalizeStoryDisplayTitle(cleanedTitle);
+      const storyKey = normalizeForKey(cleanedTitle);
+      const isThemeLike = /\b(?:titellied|intro|outro)\b/i.test(normalized);
+      if (!specialType && isThemeLike) specialType = 'theme';
+      return { normalized, folgeNumber, chapterNumber, chapterTotal, cleanedTitle, storyTitle, storyKey, specialType };
+    }
+    function getAudioEpisodeContextKey(episode) {
+      const album = normalizeForKey(episode?.album?.name || episode?.show?.name || '');
+      const artist = normalizeForKey(
+        (episode?.album?.artists || []).map(a => a?.name).filter(Boolean).join(' | ') ||
+        episode?.show?.publisher ||
+        ''
+      );
+      return `${album}::${artist}`;
+    }
+    function getAudioEpisodeStoryScopeKey(episode, meta) {
+      if (!episode?.id || !meta?.storyKey) return null;
+      return `${getAudioEpisodeContextKey(episode)}::${meta.storyKey}`;
+    }
+    function getAudioEpisodeGroupKey(episode, meta) {
+      const storyScope = getAudioEpisodeStoryScopeKey(episode, meta);
+      if (!storyScope) return null;
+      const folgePart = meta.folgeNumber ? `folge:${meta.folgeNumber}` : 'folge:';
+      return `${storyScope}::${folgePart}`;
+    }
+    function hasContiguousChapters(numbers, expectedTotal) {
+      if (!numbers.length) return false;
+      const uniqueSorted = [...new Set(numbers)].sort((a, b) => a - b);
+      const target = expectedTotal ?? uniqueSorted[uniqueSorted.length - 1];
+      if (target < 1 || uniqueSorted[0] !== 1) return false;
+      if (uniqueSorted.length !== target) return false;
+      for (let i = 0; i < target; i++) {
+        if (uniqueSorted[i] !== i + 1) return false;
+      }
+      return true;
+    }
+    function hasContiguousPlaylistBlock(entries) {
+      if (!entries.length) return false;
+      const sortedIndices = entries.map(e => e.index).sort((a, b) => a - b);
+      for (let i = 1; i < sortedIndices.length; i++) {
+        if (sortedIndices[i] - sortedIndices[i - 1] !== 1) return false;
+      }
+      return true;
     }
     function groupChaptersByEpisode(episodes) {
-      const groups = [];
-      const byKey = new Map();
-      episodes.forEach((episode, index) => {
-        if (!episode?.id) return;
-        const key = getAudioEpisodeGroupKey(episode.name) || `__single__${index}__${episode.id}`;
-        let group = byKey.get(key);
-        if (!group) {
-          group = { key, episodes: [] };
-          byKey.set(key, group);
-          groups.push(group);
+      const parsed = episodes.map((episode, index) => ({ episode, index, meta: parseAudioEpisodeMeta(episode?.name || '') }))
+        .filter(x => x.episode?.id && x.meta);
+      const chapterGroups = new Map();
+      parsed.forEach(item => {
+        if (!item.meta.chapterNumber || !item.meta.storyKey) return;
+        const key = getAudioEpisodeGroupKey(item.episode, item.meta);
+        const storyScopeKey = getAudioEpisodeStoryScopeKey(item.episode, item.meta);
+        if (!key) return;
+        if (!chapterGroups.has(key)) {
+          chapterGroups.set(key, { key, storyScopeKey, displayName: item.meta.storyTitle || item.meta.cleanedTitle || item.episode.name, entries: [], chapterEntries: [], explicitTotals: new Set() });
         }
-        group.episodes.push(episode);
+        const group = chapterGroups.get(key);
+        group.entries.push(item);
+        group.chapterEntries.push(item);
+        if (item.meta.chapterTotal && item.meta.chapterTotal > 0) group.explicitTotals.add(item.meta.chapterTotal);
       });
-      return groups;
+      const chapterGroupKeysByStoryScope = new Map();
+      chapterGroups.forEach(group => {
+        const keys = chapterGroupKeysByStoryScope.get(group.storyScopeKey) || new Set();
+        keys.add(group.key);
+        chapterGroupKeysByStoryScope.set(group.storyScopeKey, keys);
+      });
+      const completeGroups = new Map();
+      const completeGroupsByStoryScope = new Map();
+      chapterGroups.forEach(group => {
+        const chapterNumbers = group.chapterEntries.map(e => e.meta.chapterNumber).filter(n => Number.isInteger(n) && n > 0);
+        let isComplete = false;
+        const hasDuplicateChapterNumbers = new Set(chapterNumbers).size !== chapterNumbers.length;
+        if (hasDuplicateChapterNumbers) {
+          isComplete = false;
+        } else if (group.explicitTotals.size === 1) {
+          const expected = [...group.explicitTotals][0];
+          isComplete = hasContiguousPlaylistBlock(group.chapterEntries) && hasContiguousChapters(chapterNumbers, expected);
+        } else if (group.explicitTotals.size > 1) {
+          isComplete = false;
+        } else {
+          const competingGroupKeys = chapterGroupKeysByStoryScope.get(group.storyScopeKey) || new Set();
+          if (competingGroupKeys.size > 1) {
+            isComplete = false;
+          } else {
+            const distinctChapterCount = new Set(chapterNumbers).size;
+            const hasReliableBlock = hasContiguousPlaylistBlock(group.chapterEntries);
+            isComplete = distinctChapterCount >= 3 && hasReliableBlock && hasContiguousChapters(chapterNumbers, null);
+          }
+        }
+        if (isComplete) {
+          completeGroups.set(group.key, group);
+          const scopedGroups = completeGroupsByStoryScope.get(group.storyScopeKey) || [];
+          scopedGroups.push(group);
+          completeGroupsByStoryScope.set(group.storyScopeKey, scopedGroups);
+        }
+      });
+      parsed.forEach(item => {
+        if (item.meta.chapterNumber) return;
+        if (!item.meta.specialType || !item.meta.storyKey) return;
+        const storyScopeKey = getAudioEpisodeStoryScopeKey(item.episode, item.meta);
+        if (!storyScopeKey) return;
+        let group = null;
+        if (item.meta.folgeNumber) {
+          const targetKey = getAudioEpisodeGroupKey(item.episode, item.meta);
+          if (targetKey) group = completeGroups.get(targetKey) || null;
+        }
+        if (!group) return;
+        if (group.entries.some(entry => entry.episode?.id === item.episode?.id)) return;
+        group.entries.push(item);
+      });
+      return [...completeGroups.values()]
+        .map(group => ({ ...group, entries: [...group.entries].sort((a, b) => a.index - b.index) }))
+        .sort((a, b) => a.entries[0].index - b.entries[0].index)
+        .map(group => {
+          const chapterEntries = group.entries
+            .filter(entry => Number.isInteger(entry.meta?.chapterNumber))
+            .sort((a, b) => (a.meta.chapterNumber - b.meta.chapterNumber) || (a.index - b.index));
+          const specialEntries = group.entries.filter(entry => !Number.isInteger(entry.meta?.chapterNumber));
+          const orderedEntries = chapterEntries.concat(specialEntries);
+          const titleFromSummary = group.entries.find(entry => entry.meta?.specialType === 'summary' && entry.meta.cleanedTitle)?.meta.cleanedTitle;
+          const resolvedTitle = titleFromSummary && normalizeForKey(titleFromSummary) === normalizeForKey(group.displayName) ? titleFromSummary : group.displayName;
+          return { key: group.key, title: resolvedTitle, episodes: orderedEntries.map(e => e.episode) };
+        });
     }
     function renderCategories() {
       const b = $('categories'); b.innerHTML = '';
@@ -308,10 +455,12 @@
             groupedEpisodes.forEach(group => {
               const firstEpisode = group.episodes[0];
               const image = firstEpisode.images?.[0]?.url || '';
-              b.append(makeTile(firstEpisode.name, image, restart => playEpisodeGroup(group, restart), firstEpisode.id, true, firstEpisode.description || ''));
+              b.append(makeTile(group.title || firstEpisode.name, image, restart => playEpisodeGroup(group, restart), firstEpisode.id, true, firstEpisode.description || ''));
             });
             loading(''); $('controls').style.display = 'block'; updatePlayer(); return;
           }
+          loading(AUDIO_GROUPING_EMPTY_MESSAGE);
+          return;
         }
         let rendered = 0;
         items.forEach(raw => {
