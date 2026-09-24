@@ -136,6 +136,12 @@
         .replace(/\s*[-–—:|]\s*$/g, '')
         .trim();
     }
+    function normalizeStoryDisplayTitle(title) {
+      return normalizeEpisodeTitle(title)
+        .replace(/^(?:kapitel|teil)\s*0*\d+(?:\s*\/\s*0*\d+)?\s*[:\-–—]\s*/i, '')
+        .replace(/\s*[:\-–—]\s*(?:kapitel|teil)\s*0*\d+(?:\s*\/\s*0*\d+)?\s*$/i, '')
+        .trim();
+    }
     function parseAudioEpisodeMeta(title) {
       const normalized = normalizeEpisodeTitle(title);
       if (!normalized) return null;
@@ -171,10 +177,11 @@
         break;
       }
       const cleanedTitle = removeFolgeMarkers(working);
+      const storyTitle = normalizeStoryDisplayTitle(cleanedTitle);
       const storyKey = normalizeForKey(cleanedTitle);
       const isThemeLike = /\b(?:titellied|intro|outro)\b/i.test(normalized);
       if (!specialType && isThemeLike) specialType = 'theme';
-      return { normalized, folgeNumber, chapterNumber, chapterTotal, cleanedTitle, storyKey, specialType };
+      return { normalized, folgeNumber, chapterNumber, chapterTotal, cleanedTitle, storyTitle, storyKey, specialType };
     }
     function getAudioEpisodeContextKey(episode) {
       const album = normalizeForKey(episode?.album?.name || episode?.show?.name || '');
@@ -224,7 +231,7 @@
         const storyScopeKey = getAudioEpisodeStoryScopeKey(item.episode, item.meta);
         if (!key) return;
         if (!chapterGroups.has(key)) {
-          chapterGroups.set(key, { key, storyScopeKey, displayName: item.meta.cleanedTitle || item.episode.name, entries: [], chapterEntries: [], explicitTotals: new Set() });
+          chapterGroups.set(key, { key, storyScopeKey, displayName: item.meta.storyTitle || item.meta.cleanedTitle || item.episode.name, entries: [], chapterEntries: [], explicitTotals: new Set() });
         }
         const group = chapterGroups.get(key);
         group.entries.push(item);
