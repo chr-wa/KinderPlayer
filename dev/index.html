@@ -280,21 +280,6 @@
           const candidates = completeGroupsByStoryScope.get(storyScopeKey) || [];
           if (candidates.length === 1) {
             group = candidates[0];
-          } else if (candidates.length > 1) {
-            let best = null;
-            let second = null;
-            candidates.forEach(candidate => {
-              const distance = Math.min(...candidate.chapterEntries.map(entry => Math.abs(entry.index - item.index)));
-              if (!best || distance < best.distance) {
-                second = best;
-                best = { candidate, distance };
-              } else if (!second || distance < second.distance) {
-                second = { candidate, distance };
-              }
-            });
-            if (best && best.distance <= 2 && (!second || best.distance < second.distance)) {
-              group = best.candidate;
-            }
           }
         }
         if (!group) return;
