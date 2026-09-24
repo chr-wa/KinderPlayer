@@ -340,33 +340,40 @@ async function enqueueEpisode(episodeId) {
       return response;
     }
 
-async function playEpisodeGroup(group, restart) {
-      // 1. Sichere Prüfung der übergebenen Kapitel
+async function playEpisodeGroup(group, playlistId, restart) {
       const episodes = group?.episodes || [];
       if (!episodes.length) {
-        console.warn('playEpisodeGroup: Keine Episoden im Gruppen-Objekt vorhanden.', group);
         showNotice('Fehler: Keine Kapitel in dieser Folge gefunden.');
         return;
       }
 
       const firstEpisode = episodes[0];
       if (!firstEpisode || !firstEpisode.id) {
-        console.warn('playEpisodeGroup: Erstes Kapitel hat keine ID.', firstEpisode);
         showNotice('Fehler: Kapitel-ID ungültig.');
         return;
       }
 
-      // Sofort UI Feedback geben (Kachel grün markieren & Titel anzeigen)
+      // 1. Sofortiges UI Feedback
       lastActive = { id: String(firstEpisode.id), title: group.title || firstEpisode.name };
       $('now').textContent = lastActive.title;
       markActive(firstEpisode.id);
 
-      // 2. Erstes Kapitel starten
-      const started = await playEpisode(firstEpisode, restart);
-      if (!started || episodes.length < 2) return;
+      // 2. Ersten Titel über die bestehende playTrack-Logik mit Playlist-Kontext starten
+      const isRealEpisode = firstEpisode.type === 'episode' || String(firstEpisode.uri || '').startsWith('spotify:episode:');
+      
+      let started = false;
+      if (isRealEpisode) {
+        started = await playEpisode(firstEpisode, restart);
+      } else {
+        // Nutzt den funktionierenden Weg aus der alten Version
+        started = await playTrack(playlistId, firstEpisode);
+      }
 
-      // 3. Pause für Statuswechsel des Web-Players auf "active"
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      if (!started && !isRealEpisode) return; // playTrack liefert keinen Return-Wert, startet aber zuverlässig
+
+      // 3. Folgekapitel in die Queue einreihen
+      if (episodes.length < 2) return;
+      await new Promise(resolve => setTimeout(resolve, 800));
 
       let queued = 0;
       for (const episode of episodes.slice(1)) {
@@ -375,19 +382,11 @@ async function playEpisodeGroup(group, restart) {
           const queueResponse = await enqueueEpisode(episode.id);
           if (queueResponse.ok) {
             queued++;
-            await new Promise(r => setTimeout(r, 250));
-          } else {
-            console.warn(`Queueing übersprungen für Episode ${episode.id}, Status:`, queueResponse.status);
+            await new Promise(r => setTimeout(r, 200));
           }
         } catch (error) {
           console.warn('Queueing Fehler:', error);
         }
-      }
-
-      if (queued !== episodes.length - 1) {
-        showNotice('Erstes Kapitel läuft. Einige Folgekapitel konnten nicht automatisch eingereiht werden.');
-      } else {
-        hideNotice();
       }
     }
     async function loadPlaylist(id, title, categoryKey) {
@@ -423,11 +422,12 @@ async function playEpisodeGroup(group, restart) {
           const groupedEpisodes = groupChaptersByEpisode(items);
           if (groupedEpisodes.length) {
             const b = $('grid'); b.innerHTML = '';
-            groupedEpisodes.forEach(group => {
-              const firstEpisode = group.episodes[0];
-              const image = firstEpisode.album?.images?.[0]?.url || firstEpisode.images?.[0]?.url || '';
-              b.append(makeTile(group.title || firstEpisode.name, image, restart => playEpisodeGroup(group, restart), firstEpisode.id, true, firstEpisode.description || ''));
-            });
+        groupedEpisodes.forEach(group => {
+  const firstEpisode = group.episodes[0];
+  const image = firstEpisode.album?.images?.[0]?.url || firstEpisode.images?.[0]?.url || '';
+  // Übergibt jetzt zusätzlich 'id' (die Playlist-ID) an playEpisodeGroup
+  b.append(makeTile(group.title || firstEpisode.name, image, restart => playEpisodeGroup(group, id, restart), firstEpisode.id, true, firstEpisode.description || ''));
+});
             loading(''); $('controls').style.display = 'block'; updatePlayer(); return;
           }
           loading(AUDIO_GROUPING_EMPTY_MESSAGE);
@@ -467,7 +467,7 @@ async function playEpisodeGroup(group, restart) {
       }
       return r;
     }
-    async function playTrack(pid, t) {
+async function playTrack(pid, t) {
       try {
         const r = await play({ context_uri: `spotify:playlist:${pid}`, offset: { uri: `spotify:track:${t.id}` } });
         if (r.ok) {
@@ -477,13 +477,14 @@ async function playEpisodeGroup(group, restart) {
           markActive(t.id);
           $('now').textContent = t.name;
           setTimeout(updatePlayer, 500);
-          return;
+          return true;
         }
         if (r.status === 404) showNotice('Kein aktiver Player gefunden. Bitte erneut anmelden oder Spotify-App öffnen.');
       } catch (error) {
         console.error('Wiedergabe fehlgeschlagen:', error);
         showNotice('Wiedergabe konnte nicht gestartet werden.');
       }
+      return false;
     }
     async function playEpisode(e, restart) {
       if (!e || !e.id) {
