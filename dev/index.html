@@ -242,12 +242,18 @@
       parsed.forEach((item, parsedIndex) => {
         if (item.meta.chapterNumber) return;
         let targetKey = null;
-        if (item.meta.storyKey) {
+        if (item.meta.specialType === 'summary' && item.meta.storyKey) {
           targetKey = getAudioEpisodeGroupKey(item.episode, item.meta);
         } else if (item.meta.specialType) {
           const prev = findNearestChapterGroup(parsedIndex - 1, -1);
           const next = findNearestChapterGroup(parsedIndex + 1, 1);
-          if (next && (!prev || prev.key === next.key) && next.distance <= 2) targetKey = next.key;
+          if (prev && next) {
+            if (prev.key === next.key && Math.min(prev.distance, next.distance) <= 2) targetKey = prev.key;
+          } else if (next && next.distance <= 2) {
+            targetKey = next.key;
+          } else if (prev && prev.distance <= 2) {
+            targetKey = prev.key;
+          }
         }
         if (!targetKey) return;
         const group = completeGroups.get(targetKey);
