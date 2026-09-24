@@ -224,6 +224,7 @@
         if (item.meta.chapterTotal && item.meta.chapterTotal > 0) group.explicitTotals.add(item.meta.chapterTotal);
       });
       const completeGroups = new Map();
+      const completeGroupsByStoryScope = new Map();
       chapterGroups.forEach(group => {
         const chapterNumbers = group.chapterEntries.map(e => e.meta.chapterNumber).filter(n => Number.isInteger(n) && n > 0);
         let isComplete = false;
@@ -234,7 +235,12 @@
           const maxChapter = chapterNumbers.length ? Math.max(...chapterNumbers) : 0;
           isComplete = maxChapter >= 2 && hasContiguousChapters(chapterNumbers, null);
         }
-        if (isComplete) completeGroups.set(group.key, group);
+        if (isComplete) {
+          completeGroups.set(group.key, group);
+          const scopedGroups = completeGroupsByStoryScope.get(group.storyScopeKey) || [];
+          scopedGroups.push(group);
+          completeGroupsByStoryScope.set(group.storyScopeKey, scopedGroups);
+        }
       });
       parsed.forEach(item => {
         if (item.meta.chapterNumber) return;
@@ -246,7 +252,7 @@
           const targetKey = getAudioEpisodeGroupKey(item.episode, item.meta);
           if (targetKey) group = completeGroups.get(targetKey) || null;
         } else {
-          const candidates = [...completeGroups.values()].filter(candidate => candidate.storyScopeKey === storyScopeKey);
+          const candidates = completeGroupsByStoryScope.get(storyScopeKey) || [];
           if (candidates.length === 1) group = candidates[0];
         }
         if (!group) return;
