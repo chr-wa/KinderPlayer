@@ -340,34 +340,52 @@ async function enqueueEpisode(episodeId) {
       return response;
     }
 
-    async function playEpisodeGroup(group, restart) {
+async function playEpisodeGroup(group, restart) {
+      // 1. Sichere Prüfung der übergebenen Kapitel
       const episodes = group?.episodes || [];
-      if (!episodes.length) return;
+      if (!episodes.length) {
+        console.warn('playEpisodeGroup: Keine Episoden im Gruppen-Objekt vorhanden.', group);
+        showNotice('Fehler: Keine Kapitel in dieser Folge gefunden.');
+        return;
+      }
 
-      // 1. Erstes Kapitel starten
-      const started = await playEpisode(episodes[0], restart);
+      const firstEpisode = episodes[0];
+      if (!firstEpisode || !firstEpisode.id) {
+        console.warn('playEpisodeGroup: Erstes Kapitel hat keine ID.', firstEpisode);
+        showNotice('Fehler: Kapitel-ID ungültig.');
+        return;
+      }
+
+      // Sofort UI Feedback geben (Kachel grün markieren & Titel anzeigen)
+      lastActive = { id: String(firstEpisode.id), title: group.title || firstEpisode.name };
+      $('now').textContent = lastActive.title;
+      markActive(firstEpisode.id);
+
+      // 2. Erstes Kapitel starten
+      const started = await playEpisode(firstEpisode, restart);
       if (!started || episodes.length < 2) return;
 
-      // 2. Pause für Statuswechsel auf "active"
+      // 3. Pause für Statuswechsel des Web-Players auf "active"
       await new Promise(resolve => setTimeout(resolve, 1000));
 
       let queued = 0;
       for (const episode of episodes.slice(1)) {
+        if (!episode || !episode.id) continue;
         try {
           const queueResponse = await enqueueEpisode(episode.id);
           if (queueResponse.ok) {
             queued++;
             await new Promise(r => setTimeout(r, 250));
           } else {
-            console.warn(`Queueing fehlgeschlagen für Folge ${episode.id} mit Status ${queueResponse.status}`);
+            console.warn(`Queueing übersprungen für Episode ${episode.id}, Status:`, queueResponse.status);
           }
         } catch (error) {
-          console.warn('Queueing Netzwerkerrorendpunkt:', error);
+          console.warn('Queueing Fehler:', error);
         }
       }
 
       if (queued !== episodes.length - 1) {
-        showNotice('Erstes Kapitel läuft. Ein oder mehrere Folgekapitel konnten nicht zur Warteschlange hinzugefügt werden.');
+        showNotice('Erstes Kapitel läuft. Einige Folgekapitel konnten nicht automatisch eingereiht werden.');
       } else {
         hideNotice();
       }
