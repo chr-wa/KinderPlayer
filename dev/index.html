@@ -255,9 +255,9 @@
           if (competingGroupKeys.size > 1) {
             isComplete = false;
           } else {
-            const maxChapter = chapterNumbers.length ? Math.max(...chapterNumbers) : 0;
+            const distinctChapterCount = new Set(chapterNumbers).size;
             const hasReliableBlock = hasContiguousPlaylistBlock(group.chapterEntries);
-            isComplete = maxChapter >= 3 && hasReliableBlock && hasContiguousChapters(chapterNumbers, null);
+            isComplete = distinctChapterCount >= 3 && hasReliableBlock && hasContiguousChapters(chapterNumbers, null);
           }
         }
         if (isComplete) {
