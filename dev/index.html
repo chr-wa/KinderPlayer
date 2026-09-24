@@ -228,9 +228,11 @@
       chapterGroups.forEach(group => {
         const chapterNumbers = group.chapterEntries.map(e => e.meta.chapterNumber).filter(n => Number.isInteger(n) && n > 0);
         let isComplete = false;
-        if (group.explicitTotals.size > 0) {
-          const expected = Math.max(...group.explicitTotals);
+        if (group.explicitTotals.size === 1) {
+          const expected = [...group.explicitTotals][0];
           isComplete = hasContiguousChapters(chapterNumbers, expected);
+        } else if (group.explicitTotals.size > 1) {
+          isComplete = false;
         } else {
           const maxChapter = chapterNumbers.length ? Math.max(...chapterNumbers) : 0;
           isComplete = maxChapter >= 2 && hasContiguousChapters(chapterNumbers, null);
