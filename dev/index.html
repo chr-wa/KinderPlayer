@@ -320,41 +320,58 @@
       return null;
     }
 
-    async function enqueueEpisode(episodeId) {
+async function enqueueEpisode(episodeId) {
       const uri = `spotify:episode:${episodeId}`;
       let queueUrl = `https://api.spotify.com/v1/me/player/queue?uri=${encodeURIComponent(uri)}`;
       if (webPlayerDeviceId) queueUrl += `&device_id=${encodeURIComponent(webPlayerDeviceId)}`;
+      
       let response = await fetch(queueUrl, { method: 'POST', headers: { Authorization: 'Bearer ' + token() } });
+      
+      // Fallback: Falls 404 zurückkommt, versuche es ohne explizite Device-ID noch einmal
       if (response.status === 404 && webPlayerDeviceId) {
+        await new Promise(r => setTimeout(r, 400)); // Kurze Pause vor Retry
         response = await fetch(`https://api.spotify.com/v1/me/player/queue?uri=${encodeURIComponent(uri)}`, { method: 'POST', headers: { Authorization: 'Bearer ' + token() } });
       }
+      
       if (response.status === 401) {
         clearAuth();
         showLogin();
       }
       return response;
     }
-    async function playEpisodeGroup(group, restart) {
+async function playEpisodeGroup(group, restart) {
       const episodes = group?.episodes || [];
       if (!episodes.length) return;
+
+      // 1. Erstes Kapitel starten
       const started = await playEpisode(episodes[0], restart);
       if (!started || episodes.length < 2) return;
+
+      // 2. Warten, bis Spotify das erste Kapitel verarbeitet hat (wichtig für SDK Web Player)
+      await new Promise(resolve => setTimeout(resolve, 800));
+
       let queued = 0;
       for (const episode of episodes.slice(1)) {
         try {
           const queueResponse = await enqueueEpisode(episode.id);
           if (queueResponse.ok) {
             queued++;
+            // Kurzer Abstand zwischen Queue-Aufrufen, um Rate-Limiting zu vermeiden
+            await new Promise(r => setTimeout(r, 200));
             continue;
           }
-          if (queueResponse.status === 404) break;
+          if (queueResponse.status === 404) {
+            console.warn('Queue 404: Player war beim Reinhängen noch nicht bereit.');
+            break;
+          }
         } catch (error) {
           console.warn('Queueing fehlgeschlagen:', error);
           break;
         }
       }
+
       if (queued !== episodes.length - 1) {
-        showNotice('Erstes Kapitel läuft. Weitere Kapitel konnten nicht vollständig zur Warteschlange hinzugefügt werden.');
+        console.warn(`Es wurden nur ${queued} von ${episodes.length - 1} Folgekapiteln in die Queue geladen.`);
       }
     }
     async function loadPlaylist(id, title, categoryKey) {
