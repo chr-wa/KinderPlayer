@@ -55,6 +55,7 @@ let currentPodcastEpisodes = [], currentPodcastIndex = -1;
     // --- Progress / Media Session State ---
     let isDragging = false, dragCooldownUntil = 0;
     const episodeDurationCache = {};
+    let currentTrackKey = null;
     let lastProgress = { positionMs: 0, durationMs: 0, paused: true, updatedAt: 0 };
     
     function loading(text) { $('loading').textContent = text || ''; $('loading').style.display = text ? 'block' : 'none'; }
@@ -102,6 +103,11 @@ let currentPodcastEpisodes = [], currentPodcastIndex = -1;
       }
       const id = item?.id || item?.uri?.split(':').pop();
       if (id) {
+        const newKey = String(id);
+        if (newKey !== currentTrackKey) {
+          currentTrackKey = newKey;
+          lastProgress = { positionMs: 0, durationMs: 0, paused: !isPlaying, updatedAt: Date.now(), trackId: newKey };
+        }
         lastActive = { id: String(id), title: item?.name || lastActive?.title || 'Kein Titel aktiv' };
         $('now').textContent = lastActive.title;
         if (Date.now() >= markLockUntil) markActive(id);
@@ -537,15 +543,22 @@ async function loadPlaylist(id, title, categoryKey) {
     let lastSeekMs = 0;
     async function seekMs(ms) {
       if (!webPlayer) return;
-      try {
-        await webPlayer.seek(ms);
-        hideNotice();
-      } catch (e) {
-        console.warn('SDK Seek fehlgeschlagen, nutze API-Fallback:', e);
+      // Podcast-Episoden: SDK-seek wirkt haeufig still nicht -> API-Seek primaer im Podcast-Modus
+      if (currentPlaybackMode === 'podcast') {
         try {
           const r = await fetch('https://api.spotify.com/v1/me/player/seek?position_ms=' + ms, { method: 'PUT', headers: { Authorization: 'Bearer ' + token() } });
           if (r.status === 401) { clearAuth(); showLogin(); }
+          else if (!r.ok) console.warn('API Seek Status:', r.status);
         } catch (err) { console.error('API Seek Fehler:', err); }
+      } else {
+        try { await webPlayer.seek(ms); hideNotice(); }
+        catch (e) {
+          console.warn('SDK Seek fehlgeschlagen, nutze API-Fallback:', e);
+          try {
+            const r = await fetch('https://api.spotify.com/v1/me/player/seek?position_ms=' + ms, { method: 'PUT', headers: { Authorization: 'Bearer ' + token() } });
+            if (r.status === 401) { clearAuth(); showLogin(); }
+          } catch (err) { console.error('API Seek Fehler:', err); }
+        }
       }
       lastSeekMs = ms;
       setTimeout(updatePlayer, 600);
@@ -797,7 +810,9 @@ async function control(action) {
       } catch (e) { console.warn('setPositionState Fehler:', e); }
     }
     function ingestProgress(positionMs, durationMs, paused) {
-      lastProgress = { positionMs, durationMs, paused, updatedAt: Date.now() };
+      // Bekannte gueltige Dauer NICHT mit 0/undefiniert ueberschreiben (Spotify-API-Luecke bei Episoden)
+      const finalDur = (!durationMs || durationMs <= 0) ? (lastProgress.durationMs || 0) : durationMs;
+      lastProgress = { positionMs: positionMs || 0, durationMs: finalDur, paused, updatedAt: Date.now(), trackId: currentTrackKey };
       if (!isDragging) updateProgressBar();
     }
     function setupMediaSessionHandlers() {
