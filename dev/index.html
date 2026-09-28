@@ -126,7 +126,14 @@ let currentPodcastEpisodes = [], currentPodcastIndex = -1;
         }
         lastActive = { id: String(id), title: item?.name || lastActive?.title || 'Kein Titel aktiv' };
         $('now').textContent = lastActive.title;
-        if (Date.now() >= markLockUntil || isMarkSameGroup(String(id))) markActive(id);
+        if (Date.now() >= markLockUntil || isMarkSameGroup(String(id))) {
+          // Gruppen-Nachfolger (Kapitel 2,3,...): die KACHEL der gestarteten Geschichte behalten
+          if (lastUserMarkGroup && String(id) !== String(lastUserMarkId) && episodeGroupMap.get(String(id)) === lastUserMarkGroup) {
+            markActive(lastUserMarkId);
+          } else {
+            markActive(id);
+          }
+        }
       } else if (lastActive) {
         $('now').textContent = lastActive.title;
         markActive(lastActive.id);
