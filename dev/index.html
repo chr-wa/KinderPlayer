@@ -62,6 +62,8 @@ let currentPodcastEpisodes = [], currentPodcastIndex = -1;
     let lastUserMarkId = null;           // Kachel-ID, die der User zuletzt gestartet hat
     let lastUserMarkGroup = null;        // Gruppen-Key, falls Horspiel-Gruppe
     const episodeGroupMap = new Map();   // episodeId -> group.key (Hoerspiel-Gruppen)
+    const groupByKey = new Map();        // group.key -> group-Objekt (fuer Restart)
+    let lastUserGroupObj = null;         // zuletzt per Klick gestartete Gruppe
     function isMarkSameGroup(candidateId) {
       // Erlaube Ueberschreiben nur wenn dieselbe User-Kachel aktiv ist (Gruppen-Nachfolger)
       if (!lastUserMarkId) return true;
@@ -274,6 +276,7 @@ let currentPodcastEpisodes = [], currentPodcastIndex = -1;
 
       Array.from(groupsMap.values()).forEach(group => {
         group.episodes.forEach(eItem => { episodeGroupMap.set(String(eItem.episode?.id || ''), group.key); });
+        groupByKey.set(group.key, group);
       });
       return Array.from(groupsMap.values()).map(group => {
         group.episodes.sort((a, b) => (a.chapterNumber - b.chapterNumber) || (a.index - b.index));
@@ -398,6 +401,7 @@ async function playEpisodeGroup(group, playlistId, restart) {
       }
 
       // 1. Sofortiges UI Feedback
+      lastUserGroupObj = group;
       lastActive = { id: String(firstEpisode.id), title: group.title || firstEpisode.name };
       $('now').textContent = lastActive.title;
       lockMarkFor(String(firstEpisode.id), group.key || null);
@@ -908,23 +912,25 @@ async function control(action) {
     }
     $('login').onclick = login; $('back').onclick = overview; $('previous').onclick = () => control('previous'); $('next').onclick = () => control('next');
     $('restart').onclick = async () => {
-      // "Von Anfang an": laufenden Titel neu starten
+      const svg = $('restart').querySelector('svg'); if (svg) { svg.classList.add('spin'); setTimeout(() => svg.classList.remove('spin'), 650); }
+      // 1) Hörspiel-Gruppe: die GANZE Geschichte von Kapitel 1 neu (mit Queue)
+      if (lastUserGroupObj?.episodes?.length) { await playEpisodeGroup(lastUserGroupObj, null, true); hideNotice(); return; }
+      // 2) Podcast: laufende Episode aus Show-Liste neu starten
+      if (currentPodcastEpisodes.length && currentPodcastIndex !== -1) { await playEpisode(currentPodcastEpisodes[currentPodcastIndex], true, currentPodcastIndex); hideNotice(); return; }
+      // 3) Laufenden Titel ermitteln und neu starten
       let item = null;
       try {
         const r = await fetch('https://api.spotify.com/v1/me/player', { headers: { Authorization: 'Bearer ' + token() } });
         if (r.ok) item = (await r.json())?.item || null;
       } catch (e) { console.warn('Restart: Player-State nicht abrufbar:', e); }
       if (!item?.id && lastActive?.id) {
-        // Fallback: bekannte Episode aus Podcast-Liste nehmen (für restart/position_ms=0)
         item = currentPodcastEpisodes.find(x => String(x.id) === String(lastActive.id)) || null;
         if (!item) { item = { id: lastActive.id, name: lastActive.title, type: 'episode', uri: 'spotify:episode:' + lastActive.id }; }
       }
       if (!item?.id) { showNotice('Kein laufender Titel. Bitte zuerst eine Kachel starten.'); return; }
       const isEpisode = item.type === 'episode' || String(item.uri || '').startsWith('spotify:episode:');
-      const svg = $('restart').querySelector('svg'); if (svg) { svg.classList.add('spin'); setTimeout(() => svg.classList.remove('spin'), 650); }
       if (isEpisode) { await playEpisode(item, true); }
-      else if (currentPodcastEpisodes.length && currentPodcastIndex !== -1) { await playEpisode(currentPodcastEpisodes[currentPodcastIndex], true, currentPodcastIndex); }
-      else { // Musik-Track über Playlist-Kontext neu starten
+      else {
         const t = { id: item.id, name: item.name };
         const pid = (playlists.find(p => t.name && p.tracks?.items?.some?.(x => x.track?.id === t.id)) || {}).id;
         if (pid) await playTrack(pid, t); else await play({ uris: ['spotify:track:' + t.id], position_ms: 0 });
