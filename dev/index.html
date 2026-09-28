@@ -447,7 +447,7 @@ async function playEpisodeGroup(group, playlistId, restart) {
         }
       }
     }
-    const AI_BACKEND = 'http://192.168.178.40:8001';
+    const AI_BACKEND = 'https://css-marie-billion-quote.trycloudflare.com';
     async function fetchAiChapterStructure(playlistId, items) {
       // Items -> Titel-Liste; Backend analysiert (Gemini) und liefert Kapitel-Gruppen (mit Cache)
       const entries = items.map(entry).filter(Boolean);
