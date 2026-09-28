@@ -321,10 +321,7 @@ let currentPodcastEpisodes = [], currentPodcastIndex = -1;
       } catch (e) { if (id === requestId) { console.error(e); loading('Fehler beim Laden der Playlists.'); } }
     }
     function markActive(id) { const x = id == null ? null : String(id); document.querySelectorAll('.tile').forEach(t => t.classList.toggle('active', x !== null && t.dataset.trackId === x)); }
-    function applyPlaybackStateSafe(isPlaying, item) {
-      const id = item?.id || item?.uri?.split(':').pop();
-      if (id) markActive(String(id));
-    }
+
 
     async function fetchShowEpisodes(showId) {
       const episodes = [], seen = new Set();
@@ -412,7 +409,7 @@ async function playEpisodeGroup(group, playlistId, restart) {
       
       let started = false;
       if (isRealEpisode) {
-        started = await playEpisode(firstEpisode, restart);
+        started = await playEpisode(firstEpisode, restart, -1, group.key || null);
       } else {
         // Nutzt den funktionierenden Weg aus der alten Version
         started = await playTrack(playlistId, firstEpisode);
@@ -504,7 +501,7 @@ async function loadPlaylist(id, title, categoryKey) {
 
 
     // 3. playEpisode komplett
-    async function playEpisode(e, restart, index = -1) {
+    async function playEpisode(e, restart, index = -1, groupKey = null) {
       if (!e || !e.id) {
         console.warn('playEpisode: Ungültiges Episode/Track-Objekt', e);
         return false;
@@ -534,7 +531,7 @@ async function loadPlaylist(id, title, categoryKey) {
           currentPlaybackMode = 'podcast';
           hideNotice();
           lastActive = { id: String(e.id), title: e.name };
-          lockMarkFor(String(e.id));
+          lockMarkFor(String(e.id), groupKey);
           markActive(e.id);
           $('now').textContent = e.name;
           setTimeout(updatePlayer, 500);
@@ -638,7 +635,7 @@ async function playTrack(pid, t) {
       try {
         const r = await fetch('https://api.spotify.com/v1/me/player', { headers: { Authorization: 'Bearer ' + token() } });
         if (r.status === 200) {
-          const d = await r.json(); $('controls').style.display = 'block'; initProgressBarDrag(); applyPlaybackState(d.is_playing, d.item); applyPlaybackStateSafe(d.is_playing, d.item);
+          const d = await r.json(); $('controls').style.display = 'block'; initProgressBarDrag(); applyPlaybackState(d.is_playing, d.item);
           if (typeof d.progress_ms === 'number') {
             const it = d.item;
             let dur = it?.duration_ms || 0;
