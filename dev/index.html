@@ -287,6 +287,10 @@ let currentPodcastEpisodes = [], currentPodcastIndex = -1;
       } catch (e) { if (id === requestId) { console.error(e); loading('Fehler beim Laden der Playlists.'); } }
     }
     function markActive(id) { const x = id == null ? null : String(id); document.querySelectorAll('.tile').forEach(t => t.classList.toggle('active', x !== null && t.dataset.trackId === x)); }
+    function applyPlaybackStateSafe(isPlaying, item) {
+      const id = item?.id || item?.uri?.split(':').pop();
+      if (id) markActive(String(id));
+    }
 
     async function fetchShowEpisodes(showId) {
       const episodes = [], seen = new Set();
@@ -526,6 +530,24 @@ async function loadPlaylist(id, title, categoryKey) {
       return false;
     }
 
+    // --- Seek-Helfer: SDK-Suche mit API-Fallback (fuer Podcast-Episoden) ---
+    let lastSeekMs = 0;
+    async function seekMs(ms) {
+      if (!webPlayer) return;
+      try {
+        await webPlayer.seek(ms);
+        hideNotice();
+      } catch (e) {
+        console.warn('SDK Seek fehlgeschlagen, nutze API-Fallback:', e);
+        try {
+          const r = await fetch('https://api.spotify.com/v1/me/player/seek?position_ms=' + ms, { method: 'PUT', headers: { Authorization: 'Bearer ' + token() } });
+          if (r.status === 401) { clearAuth(); showLogin(); }
+        } catch (err) { console.error('API Seek Fehler:', err); }
+      }
+      lastSeekMs = ms;
+      setTimeout(updatePlayer, 600);
+    }
+
     async function play(body) {
       const playUrl = webPlayerDeviceId ? `https://api.spotify.com/v1/me/player/play?device_id=${encodeURIComponent(webPlayerDeviceId)}` : 'https://api.spotify.com/v1/me/player/play';
       let r = await fetch(playUrl, { method: 'PUT', headers: { Authorization: 'Bearer ' + token(), 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
@@ -572,8 +594,18 @@ async function playTrack(pid, t) {
       try {
         const r = await fetch('https://api.spotify.com/v1/me/player', { headers: { Authorization: 'Bearer ' + token() } });
         if (r.status === 200) {
-          const d = await r.json(); $('controls').style.display = 'block'; initProgressBarDrag(); applyPlaybackState(d.is_playing, d.item);
-          if (typeof d.progress_ms === 'number') ingestProgress(d.progress_ms, d.item?.duration_ms || 0, !d.is_playing);
+          const d = await r.json(); $('controls').style.display = 'block'; initProgressBarDrag(); applyPlaybackState(d.is_playing, d.item); applyPlaybackStateSafe(d.is_playing, d.item);
+          if (typeof d.progress_ms === 'number') {
+            const it = d.item;
+            let dur = it?.duration_ms || 0;
+            ingestProgress(d.progress_ms, dur, !d.is_playing);
+            // Podcast-Fallback: fehlende Dauer aus Episodenliste nachschlagen
+            if ((!dur || dur <= 0) && it) {
+              const eid = String(it.id || it.uri?.split(':').pop() || '');
+              const match = currentPodcastEpisodes.find(x => String(x.id) === String(eid));
+              if (match?.duration_ms) ingestProgress(d.progress_ms, match.duration_ms, !d.is_playing);
+            }
+          }
         } else if (r.status === 204) { applyPlaybackState(false, null); }
         else if (r.status === 401) { clearAuth(); showLogin(); }
       } catch (error) { if (lastActive) { $('now').textContent = lastActive.title; markActive(lastActive.id); } }
@@ -752,9 +784,9 @@ async function control(action) {
     function setupMediaSessionHandlers() {
       if (!('mediaSession' in navigator)) return;
       const ms = navigator.mediaSession;
-      try { ms.setActionHandler('seekto', d => { if (d.seekTime != null) webPlayer?.seek(d.seekTime * 1000); }); } catch (e) {}
-      try { ms.setActionHandler('seekbackward', d => { const back = d.seekOffset || 30; if (lastProgress.durationMs) { const target = Math.max(0, Math.min(lastProgress.durationMs / 1000, (lastProgress.positionMs + (lastProgress.paused ? 0 : Date.now() - lastProgress.updatedAt)) / 1000) - back); webPlayer?.seek(target * 1000); } }); } catch (e) {}
-      try { ms.setActionHandler('seekforward', d => { const fwd = d.seekOffset || 30; if (lastProgress.durationMs) { const target = Math.min(lastProgress.durationMs / 1000, ((lastProgress.positionMs + (lastProgress.paused ? 0 : Date.now() - lastProgress.updatedAt)) / 1000) + fwd); webPlayer?.seek(target * 1000); } }); } catch (e) {}
+      try { ms.setActionHandler('seekto', d => { if (d.seekTime != null) seekMs(Math.round(d.seekTime * 1000)); }); } catch (e) {}
+      try { ms.setActionHandler('seekbackward', d => { const back = d.seekOffset || 30; if (lastProgress.durationMs) { const target = Math.max(0, Math.min(lastProgress.durationMs / 1000, (lastProgress.positionMs + (lastProgress.paused ? 0 : Date.now() - lastProgress.updatedAt)) / 1000) - back); seekMs(Math.round(target * 1000)); } }); } catch (e) {}
+      try { ms.setActionHandler('seekforward', d => { const fwd = d.seekOffset || 30; if (lastProgress.durationMs) { const target = Math.min(lastProgress.durationMs / 1000, ((lastProgress.positionMs + (lastProgress.paused ? 0 : Date.now() - lastProgress.updatedAt)) / 1000) + fwd); seekMs(Math.round(target * 1000)); } }); } catch (e) {}
       try { ms.setActionHandler('play', () => webPlayer?.resume()); } catch (e) {}
       try { ms.setActionHandler('pause', () => webPlayer?.pause()); } catch (e) {}
       try { ms.setActionHandler('nexttrack', () => control('next')); } catch (e) {}
@@ -768,7 +800,7 @@ async function control(action) {
       const endDrag = commit => {
         if (!isDragging) return;
         const seekMs = Math.round((Number(bar.value) / 1000) * lastProgress.durationMs);
-        if (commit && lastProgress.durationMs > 0 && webPlayer) { try { webPlayer.seek(seekMs); } catch (e) { console.warn('Seek fehlgeschlagen:', e); } }
+        if (commit && lastProgress.durationMs > 0 && webPlayer) { seekMs(seekMs); }
         dragCooldownUntil = Date.now() + 300;
         setTimeout(() => { isDragging = false; }, 300);
       };
