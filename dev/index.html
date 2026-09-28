@@ -54,6 +54,7 @@
 let currentPodcastEpisodes = [], currentPodcastIndex = -1;
     // --- Progress / Media Session State ---
     let isDragging = false, dragCooldownUntil = 0;
+    const episodeDurationCache = {};
     let lastProgress = { positionMs: 0, durationMs: 0, paused: true, updatedAt: 0 };
     
     function loading(text) { $('loading').textContent = text || ''; $('loading').style.display = text ? 'block' : 'none'; }
@@ -91,6 +92,7 @@ let currentPodcastEpisodes = [], currentPodcastIndex = -1;
       const notice = document.getElementById('player-notice');
       if (notice) notice.style.display = 'none';
     }
+    let markLockUntil = 0;
     function applyPlaybackState(isPlaying, item) {
       $('play-icon').style.display = isPlaying ? 'none' : 'block';
       $('pause-icon').style.display = isPlaying ? 'block' : 'none';
@@ -102,7 +104,7 @@ let currentPodcastEpisodes = [], currentPodcastIndex = -1;
       if (id) {
         lastActive = { id: String(id), title: item?.name || lastActive?.title || 'Kein Titel aktiv' };
         $('now').textContent = lastActive.title;
-        markActive(id);
+        if (Date.now() >= markLockUntil) markActive(id);
       } else if (lastActive) {
         $('now').textContent = lastActive.title;
         markActive(lastActive.id);
@@ -499,6 +501,7 @@ async function loadPlaylist(id, title, categoryKey) {
           currentPlaybackMode = 'podcast';
           hideNotice();
           lastActive = { id: String(e.id), title: e.name };
+          markLockUntil = Date.now() + 1200;
           markActive(e.id);
           $('now').textContent = e.name;
           setTimeout(updatePlayer, 500);
@@ -576,6 +579,7 @@ async function playTrack(pid, t) {
           currentPlaybackMode = 'track';
           hideNotice();
           lastActive = { id: String(t.id), title: t.name };
+          markLockUntil = Date.now() + 1200;
           markActive(t.id);
           $('now').textContent = t.name;
           setTimeout(updatePlayer, 500);
@@ -599,11 +603,26 @@ async function playTrack(pid, t) {
             const it = d.item;
             let dur = it?.duration_ms || 0;
             ingestProgress(d.progress_ms, dur, !d.is_playing);
-            // Podcast-Fallback: fehlende Dauer aus Episodenliste nachschlagen
+            // Podcast-Fallback: fehlende Dauer -> Episodenliste, dann Episode-Detail (1x)
             if ((!dur || dur <= 0) && it) {
               const eid = String(it.id || it.uri?.split(':').pop() || '');
               const match = currentPodcastEpisodes.find(x => String(x.id) === String(eid));
-              if (match?.duration_ms) ingestProgress(d.progress_ms, match.duration_ms, !d.is_playing);
+              if (match?.duration_ms) {
+                ingestProgress(d.progress_ms, match.duration_ms, !d.is_playing);
+              } else if (eid && episodeDurationCache[eid] !== undefined) {
+                ingestProgress(d.progress_ms, episodeDurationCache[eid], !d.is_playing);
+              } else if (eid) {
+                try {
+                  const er = await fetch('https://api.spotify.com/v1/episodes/' + eid + '?market=DE', { headers: { Authorization: 'Bearer ' + token() } });
+                  if (er.ok) {
+                    const ed = await er.json();
+                    if (er.status !== 401 && ed.duration_ms) {
+                      episodeDurationCache[eid] = ed.duration_ms;
+                      ingestProgress(d.progress_ms, ed.duration_ms, !d.is_playing);
+                    } else if (er.status === 401) { clearAuth(); showLogin(); }
+                  }
+                } catch (err) { console.warn('Episode-Dauer-Fallback:', err); }
+              }
             }
           }
         } else if (r.status === 204) { applyPlaybackState(false, null); }
@@ -799,8 +818,8 @@ async function control(action) {
       const startDrag = () => { isDragging = true; };
       const endDrag = commit => {
         if (!isDragging) return;
-        const seekMs = Math.round((Number(bar.value) / 1000) * lastProgress.durationMs);
-        if (commit && lastProgress.durationMs > 0 && webPlayer) { seekMs(seekMs); }
+        const targetMs = Math.round((Number(bar.value) / 1000) * lastProgress.durationMs);
+        if (commit && lastProgress.durationMs > 0 && webPlayer) { seekMs(targetMs); }
         dragCooldownUntil = Date.now() + 300;
         setTimeout(() => { isDragging = false; }, 300);
       };
