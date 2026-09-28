@@ -6,7 +6,8 @@
   <title>Kinder Player</title>
   <link rel="manifest" href="manifest.json">
   <style>
-    *{box-sizing:border-box;user-select:none;-webkit-user-select:none}body{margin:0;padding:20px 20px 125px;background:#121212;color:#fff;font-family:sans-serif;touch-action:pan-y}body.detail{padding-top:75px}h1{text-align:center;color:#1db954;font-size:1.8rem;margin:0 0 20px}.btn-login{display:block;margin:50px auto;padding:15px 30px;background:#1db954;color:#fff;border:0;border-radius:25px;font-size:1.2rem;font-weight:bold;cursor:pointer}.category-bar{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin-bottom:20px}.category-bar.sticky{position:sticky;top:10px;z-index:9;background:#121212;padding:10px 0;border-radius:12px}.category-tile{background:#282828;color:#fff;border:3px solid transparent;border-radius:12px;padding:12px 18px;font-weight:bold;cursor:pointer}.category-tile.active{border-color:#1db954;background:#333}.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:15px}.tile{position:relative;background:#282828;border:3px solid transparent;border-radius:12px;padding:10px;text-align:center;cursor:pointer;transition:.2s}.tile.active{border-color:#1db954!important;background:#333;transform:scale(1.03);box-shadow:0 4px 15px rgba(29,185,84,.4)}.tile img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;background:#333}.tile-title{margin-top:8px;font-size:.95rem;font-weight:bold;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.restart-btn{display:block;margin:10px auto 0;padding:7px 10px;background:#444;color:#fff;border:1px solid #777;border-radius:16px;font-size:.75rem;font-weight:bold;cursor:pointer}.loading{display:none;text-align:center;color:#888;font-size:1.1rem;margin:35px 0}.nav{display:none;position:fixed;top:15px;left:50%;transform:translateX(-50%);z-index:10;width:max-content;max-width:calc(100% - 30px)}.back-btn{background:#282828;color:#fff;border:1px solid rgba(255,255,255,.15);padding:10px 22px;border-radius:25px;font-size:.95rem;font-weight:bold;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px}.controls{display:none;position:fixed;bottom:15px;left:50%;transform:translateX(-50%);width:min(500px,calc(100% - 30px));z-index:20;background:rgba(24,24,24,.95);backdrop-filter:blur(8px);padding:12px 20px;border-radius:35px;box-shadow:0 4px 16px rgba(0,0,0,.25)}.player-controls-inner{display:flex;align-items:center;justify-content:center;gap:25px}.player-button{background:none;border:0;color:#fff;cursor:pointer;padding:10px;display:flex;align-items:center;justify-content:center}.player-button.primary{background:#1db954;width:64px;height:64px;border-radius:50%;padding:0}.now-playing{text-align:center;color:#e5e5e5;font-size:.85rem;font-weight:600;min-height:1.2em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 8px;margin-top:6px}
+    *{box-sizing:border-box;user-select:none;-webkit-user-select:none}body{margin:0;padding:20px 20px 125px;background:#121212;color:#fff;font-family:sans-serif;touch-action:pan-y}body.detail{padding-top:75px}h1{text-align:center;color:#1db954;font-size:1.8rem;margin:0 0 20px}.btn-login{display:block;margin:50px auto;padding:15px 30px;background:#1db954;color:#fff;border:0;border-radius:25px;font-size:1.2rem;font-weight:bold;cursor:pointer}.category-bar{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin-bottom:20px}.category-bar.sticky{position:sticky;top:10px;z-index:9;background:#121212;padding:10px 0;border-radius:12px}.category-tile{background:#282828;color:#fff;border:3px solid transparent;border-radius:12px;padding:12px 18px;font-weight:bold;cursor:pointer}.category-tile.active{border-color:#1db954;background:#333}.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:15px}.tile{position:relative;background:#282828;border:3px solid transparent;border-radius:12px;padding:10px;text-align:center;cursor:pointer;transition:.2s}.tile.active{border-color:#1db954!important;background:#333;transform:scale(1.03);box-shadow:0 4px 15px rgba(29,185,84,.4)}.tile img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;background:#333}.tile-title{margin-top:8px;font-size:.95rem;font-weight:bold;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}@keyframes spin-once{from{transform:rotate(0)}to{transform:rotate(-360deg)}}.player-button.restart{position:absolute;left:22px;top:24px;transform:none;padding:8px;color:#b3b3b3}.player-button.restart svg{width:24px;height:24px}.player-button.restart svg.spin{animation:spin-once .6s ease}.player-button.restart:active{transform:scale(.92)}@media(max-width:360px){.player-button.restart{left:12px}}.loading{display:none;text-align:center;color:#888;font-size:1.1rem;margin:35px 0}.nav{display:none;position:fixed;top:15px;left:50%;transform:translateX(-50%);z-index:10;width:max-content;max-width:calc(100% - 30px)}.back-btn{background:#282828;color:#fff;border:1px solid rgba(255,255,255,.15);padding:10px 22px;border-radius:25px;font-size:.95rem;font-weight:bold;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px}.controls{position:relative;display:none;position:fixed;bottom:15px;left:50%;transform:translateX(-50%);width:min(500px,calc(100% - 30px));z-index:20;background:rgba(24,24,24,.95);backdrop-filter:blur(8px);padding:12px 20px;border-radius:35px;box-shadow:0 4px 16px rgba(0,0,0,.25)}.player-controls-inner{display:flex;align-items:center;justify-content:center;gap:25px}.player-button{background:none;border:0;color:#fff;cursor:pointer;padding:10px;display:flex;align-items:center;justify-content:center}.player-button.primary{background:#1db954;width:64px;height:64px;border-radius:50%;padding:0}.now-playing{text-align:center;color:#e5e5e5;font-size:.85rem;font-weight:600;min-height:1.2em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 8px;margin-top:6px}
+.progress-row{display:flex;align-items:center;gap:10px;margin-top:6px;padding:0 6px}.time-label{font-size:.78rem;color:#b3b3b3;min-width:42px;text-align:center;font-variant-numeric:tabular-nums}#progress-bar{flex:1;-webkit-appearance:none;appearance:none;height:6px;background:#4d4d4d;border-radius:3px;outline:none;cursor:pointer}#progress-bar::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:16px;height:16px;border-radius:50%;background:#1db954;border:none;touch-action:none}#progress-bar::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:#1db954;border:none;touch-action:none}
   </style>
 </head>
 <body>
@@ -22,6 +23,9 @@
     </button>
   </div>
   <div id="controls" class="controls">
+    <button id="restart" class="player-button restart" type="button" aria-label="Von Anfang an">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><polyline points="3 4 3 9 8 9"/></svg>
+    </button>
     <div class="player-controls-inner">
       <button id="previous" class="player-button" type="button" aria-label="Vorheriger Titel">
         <svg width="36" height="36" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
@@ -35,6 +39,11 @@
       </button>
     </div>
     <div id="now" class="now-playing">Kein Titel aktiv</div>
+    <div id="progress-row" class="progress-row">
+      <span id="current-time" class="time-label">0:00</span>
+      <input id="progress-bar" type="range" min="0" max="1000" value="0" step="1" aria-label="Fortschritt">
+      <span id="total-time" class="time-label">0:00</span>
+    </div>
   </div>
 
   <script src="https://sdk.scdn.co/spotify-player.js"></script>
@@ -46,6 +55,29 @@
     const $ = id => document.getElementById(id), token = () => localStorage.getItem('access_token');
     let playlists = [], category = null, requestId = 0, lastActive = null, webPlayer = null, webPlayerDeviceId = null, webPlayerReady = false, currentPlaybackMode = 'track';
 let currentPodcastEpisodes = [], currentPodcastIndex = -1;
+    // --- Progress / Media Session State ---
+    let isDragging = false, dragCooldownUntil = 0;
+    const episodeDurationCache = {};
+    let currentTrackKey = null;
+    let lastUserMarkId = null;           // Kachel-ID, die der User zuletzt gestartet hat
+    let lastUserMarkGroup = null;        // Gruppen-Key, falls Horspiel-Gruppe
+    const episodeGroupMap = new Map();   // episodeId -> group.key (Hoerspiel-Gruppen)
+    const groupByKey = new Map();        // group.key -> group-Objekt (fuer Restart)
+    let lastUserGroupObj = null;         // zuletzt per Klick gestartete Gruppe
+    function isMarkSameGroup(candidateId) {
+      // Erlaube Ueberschreiben nur wenn dieselbe User-Kachel aktiv ist (Gruppen-Nachfolger)
+      if (!lastUserMarkId) return true;
+      if (String(candidateId) === String(lastUserMarkId)) return true;
+      // Hoerspiel-Gruppe: Nachfolger-Kapitel gehören zur gestarteten Kachel
+      if (lastUserMarkGroup && episodeGroupMap.get(String(candidateId)) === lastUserMarkGroup) return true;
+      return false;
+    }
+    function lockMarkFor(id, groupKey = null) {
+      lastUserMarkId = id ? String(id) : null;
+      lastUserMarkGroup = groupKey;
+      markLockUntil = Date.now() + 8000;   // Schutzfenster bis SDK den neuen Track bestätigt
+    }
+    let lastProgress = { positionMs: 0, durationMs: 0, paused: true, updatedAt: 0 };
     
     function loading(text) { $('loading').textContent = text || ''; $('loading').style.display = text ? 'block' : 'none'; }
     function setDetail(v) { $('nav').style.display = v ? 'block' : 'none'; document.body.classList.toggle('detail', v); $('categories').classList.toggle('sticky', !v); }
@@ -82,6 +114,7 @@ let currentPodcastEpisodes = [], currentPodcastIndex = -1;
       const notice = document.getElementById('player-notice');
       if (notice) notice.style.display = 'none';
     }
+    let markLockUntil = 0;
     function applyPlaybackState(isPlaying, item) {
       $('play-icon').style.display = isPlaying ? 'none' : 'block';
       $('pause-icon').style.display = isPlaying ? 'block' : 'none';
@@ -91,9 +124,21 @@ let currentPodcastEpisodes = [], currentPodcastIndex = -1;
       }
       const id = item?.id || item?.uri?.split(':').pop();
       if (id) {
+        const newKey = String(id);
+        if (newKey !== currentTrackKey) {
+          currentTrackKey = newKey;
+          lastProgress = { positionMs: 0, durationMs: 0, paused: !isPlaying, updatedAt: Date.now(), trackId: newKey };
+        }
         lastActive = { id: String(id), title: item?.name || lastActive?.title || 'Kein Titel aktiv' };
         $('now').textContent = lastActive.title;
-        markActive(id);
+        if (Date.now() >= markLockUntil || isMarkSameGroup(String(id))) {
+          // Gruppen-Nachfolger (Kapitel 2,3,...): die KACHEL der gestarteten Geschichte behalten
+          if (lastUserMarkGroup && String(id) !== String(lastUserMarkId) && episodeGroupMap.get(String(id)) === lastUserMarkGroup) {
+            markActive(lastUserMarkId);
+          } else {
+            markActive(id);
+          }
+        }
       } else if (lastActive) {
         $('now').textContent = lastActive.title;
         markActive(lastActive.id);
@@ -119,10 +164,6 @@ let currentPodcastEpisodes = [], currentPodcastIndex = -1;
         desc.style.cssText = 'margin-top:6px;color:#b3b3b3;font-size:.8rem;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden';
         desc.textContent = description;
         t.append(desc);
-      }
-      if (isPodcast) {
-        const b = document.createElement('button'); b.type = 'button'; b.className = 'restart-btn'; b.textContent = '↺ Von Anfang an';
-        b.onclick = e => { e.stopPropagation(); onClick(true); }; t.append(b);
       }
       return t;
     }
@@ -233,6 +274,10 @@ let currentPodcastEpisodes = [], currentPodcastIndex = -1;
         });
       });
 
+      Array.from(groupsMap.values()).forEach(group => {
+        group.episodes.forEach(eItem => { episodeGroupMap.set(String(eItem.episode?.id || ''), group.key); });
+        groupByKey.set(group.key, group);
+      });
       return Array.from(groupsMap.values()).map(group => {
         group.episodes.sort((a, b) => (a.chapterNumber - b.chapterNumber) || (a.index - b.index));
         return {
@@ -278,6 +323,7 @@ let currentPodcastEpisodes = [], currentPodcastIndex = -1;
       } catch (e) { if (id === requestId) { console.error(e); loading('Fehler beim Laden der Playlists.'); } }
     }
     function markActive(id) { const x = id == null ? null : String(id); document.querySelectorAll('.tile').forEach(t => t.classList.toggle('active', x !== null && t.dataset.trackId === x)); }
+
 
     async function fetchShowEpisodes(showId) {
       const episodes = [], seen = new Set();
@@ -355,8 +401,10 @@ async function playEpisodeGroup(group, playlistId, restart) {
       }
 
       // 1. Sofortiges UI Feedback
+      lastUserGroupObj = group;
       lastActive = { id: String(firstEpisode.id), title: group.title || firstEpisode.name };
       $('now').textContent = lastActive.title;
+      lockMarkFor(String(firstEpisode.id), group.key || null);
       markActive(firstEpisode.id);
 
       // 2. Ersten Titel über die bestehende playTrack-Logik mit Playlist-Kontext starten
@@ -364,10 +412,19 @@ async function playEpisodeGroup(group, playlistId, restart) {
       
       let started = false;
       if (isRealEpisode) {
-        started = await playEpisode(firstEpisode, restart);
+        started = await playEpisode(firstEpisode, restart, -1, group.key || null);
       } else {
-        // Nutzt den funktionierenden Weg aus der alten Version
-        started = await playTrack(playlistId, firstEpisode);
+        // Nutzt den funktionierenden Weg aus der alten Version (playlistId kann null sein -> dann uris)
+        started = false;
+        try {
+          const tr = await playTrack(playlistId, firstEpisode);
+          started = !!tr;
+        } catch (err) { console.warn('playTrack mit playlistId fehlgeschlagen:', err); }
+        if (!started) {
+          // Fallback ohne Playlist-Kontext
+          const fr = await play({ uris: [firstEpisode.uri || 'spotify:episode:' + firstEpisode.id], position_ms: restart ? 0 : undefined });
+          started = fr?.ok || false;
+        }
       }
 
       if (!started && !isRealEpisode) return; // playTrack liefert keinen Return-Wert, startet aber zuverlässig
@@ -456,7 +513,7 @@ async function loadPlaylist(id, title, categoryKey) {
 
 
     // 3. playEpisode komplett
-    async function playEpisode(e, restart, index = -1) {
+    async function playEpisode(e, restart, index = -1, groupKey = null) {
       if (!e || !e.id) {
         console.warn('playEpisode: Ungültiges Episode/Track-Objekt', e);
         return false;
@@ -486,6 +543,7 @@ async function loadPlaylist(id, title, categoryKey) {
           currentPlaybackMode = 'podcast';
           hideNotice();
           lastActive = { id: String(e.id), title: e.name };
+          lockMarkFor(String(e.id), groupKey);
           markActive(e.id);
           $('now').textContent = e.name;
           setTimeout(updatePlayer, 500);
@@ -517,6 +575,31 @@ async function loadPlaylist(id, title, categoryKey) {
       return false;
     }
 
+    // --- Seek-Helfer: SDK-Suche mit API-Fallback (fuer Podcast-Episoden) ---
+    let lastSeekMs = 0;
+    async function seekMs(ms) {
+      if (!webPlayer) return;
+      // Podcast-Episoden: SDK-seek wirkt haeufig still nicht -> API-Seek primaer im Podcast-Modus
+      if (currentPlaybackMode === 'podcast') {
+        try {
+          const r = await fetch('https://api.spotify.com/v1/me/player/seek?position_ms=' + ms, { method: 'PUT', headers: { Authorization: 'Bearer ' + token() } });
+          if (r.status === 401) { clearAuth(); showLogin(); }
+          else if (!r.ok) console.warn('API Seek Status:', r.status);
+        } catch (err) { console.error('API Seek Fehler:', err); }
+      } else {
+        try { await webPlayer.seek(ms); hideNotice(); }
+        catch (e) {
+          console.warn('SDK Seek fehlgeschlagen, nutze API-Fallback:', e);
+          try {
+            const r = await fetch('https://api.spotify.com/v1/me/player/seek?position_ms=' + ms, { method: 'PUT', headers: { Authorization: 'Bearer ' + token() } });
+            if (r.status === 401) { clearAuth(); showLogin(); }
+          } catch (err) { console.error('API Seek Fehler:', err); }
+        }
+      }
+      lastSeekMs = ms;
+      setTimeout(updatePlayer, 600);
+    }
+
     async function play(body) {
       const playUrl = webPlayerDeviceId ? `https://api.spotify.com/v1/me/player/play?device_id=${encodeURIComponent(webPlayerDeviceId)}` : 'https://api.spotify.com/v1/me/player/play';
       let r = await fetch(playUrl, { method: 'PUT', headers: { Authorization: 'Bearer ' + token(), 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
@@ -545,6 +628,7 @@ async function playTrack(pid, t) {
           currentPlaybackMode = 'track';
           hideNotice();
           lastActive = { id: String(t.id), title: t.name };
+          lockMarkFor(String(t.id));
           markActive(t.id);
           $('now').textContent = t.name;
           setTimeout(updatePlayer, 500);
@@ -563,7 +647,33 @@ async function playTrack(pid, t) {
       try {
         const r = await fetch('https://api.spotify.com/v1/me/player', { headers: { Authorization: 'Bearer ' + token() } });
         if (r.status === 200) {
-          const d = await r.json(); $('controls').style.display = 'block'; applyPlaybackState(d.is_playing, d.item);
+          const d = await r.json(); $('controls').style.display = 'block'; initProgressBarDrag(); applyPlaybackState(d.is_playing, d.item);
+          if (typeof d.progress_ms === 'number') {
+            const it = d.item;
+            let dur = it?.duration_ms || 0;
+            ingestProgress(d.progress_ms, dur, !d.is_playing);
+            // Podcast-Fallback: fehlende Dauer -> Episodenliste, dann Episode-Detail (1x)
+            if ((!dur || dur <= 0) && it) {
+              const eid = String(it.id || it.uri?.split(':').pop() || '');
+              const match = currentPodcastEpisodes.find(x => String(x.id) === String(eid));
+              if (match?.duration_ms) {
+                ingestProgress(d.progress_ms, match.duration_ms, !d.is_playing);
+              } else if (eid && episodeDurationCache[eid] !== undefined) {
+                ingestProgress(d.progress_ms, episodeDurationCache[eid], !d.is_playing);
+              } else if (eid) {
+                try {
+                  const er = await fetch('https://api.spotify.com/v1/episodes/' + eid + '?market=DE', { headers: { Authorization: 'Bearer ' + token() } });
+                  if (er.ok) {
+                    const ed = await er.json();
+                    if (er.status !== 401 && ed.duration_ms) {
+                      episodeDurationCache[eid] = ed.duration_ms;
+                      ingestProgress(d.progress_ms, ed.duration_ms, !d.is_playing);
+                    } else if (er.status === 401) { clearAuth(); showLogin(); }
+                  }
+                } catch (err) { console.warn('Episode-Dauer-Fallback:', err); }
+              }
+            }
+          }
         } else if (r.status === 204) { applyPlaybackState(false, null); }
         else if (r.status === 401) { clearAuth(); showLogin(); }
       } catch (error) { if (lastActive) { $('now').textContent = lastActive.title; markActive(lastActive.id); } }
@@ -670,6 +780,7 @@ async function control(action) {
         getOAuthToken: callback => callback(localStorage.getItem('access_token') || ''),
         volume: 0.8
       });
+      setupMediaSessionHandlers();
       webPlayer.addListener('ready', ({ device_id }) => {
         webPlayerDeviceId = device_id;
         webPlayerReady = true;
@@ -693,7 +804,16 @@ async function control(action) {
       webPlayer.addListener('player_state_changed', state => {
         if (!state) return;
         $('controls').style.display = 'block';
-        applyPlaybackState(!state.paused, state.track_window?.current_track);
+        initProgressBarDrag();
+        const cur = state.track_window?.current_track;
+        ingestProgress(state.position || 0, state.duration || 0, !!state.paused);
+        updateMediaSessionState({ duration: (state.duration || 0) / 1000, position: (state.position || 0) / 1000, paused: !!state.paused });
+        if (cur) {
+          if ('mediaSession' in navigator) {
+            navigator.mediaSession.metadata = new window.MediaMetadata({ title: cur.name || '', artist: cur.artists?.map(a => a.name).join(', ') || '', album: cur.album?.name || '', artwork: (cur.album?.images || []).slice(0, 2).map(i => ({ src: i.url, sizes: (i.width && i.height) ? `${i.width}x${i.height}` : '', type: 'image/jpeg' })) });
+          }
+        }
+        applyPlaybackState(!state.paused, cur);
       });
       webPlayer.connect().catch(error => {
         console.error('Web Playback Connect Fehler:', error);
@@ -702,6 +822,65 @@ async function control(action) {
       });
     }
     window.onSpotifyWebPlaybackSDKReady = () => initWebPlayer();
+    // --- Fortschritt & Media Session ---
+    function fmtTime(ms) { const s = Math.max(0, Math.floor(ms / 1000)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
+    function updateProgressBar() {
+      const bar = $('progress-bar');
+      if (!bar || isDragging) return;
+      const { positionMs, durationMs, paused, updatedAt } = lastProgress;
+      if (!durationMs || durationMs <= 0) { bar.value = 0; $('current-time').textContent = fmtTime(positionMs); $('total-time').textContent = '0:00'; return; }
+      let pos = positionMs;
+      if (!paused) pos += Date.now() - updatedAt;
+      pos = Math.min(pos, durationMs);
+      bar.value = Math.round((pos / durationMs) * 1000);
+      $('current-time').textContent = fmtTime(pos);
+      $('total-time').textContent = fmtTime(durationMs);
+    }
+    function progressTick() { if (!isDragging && lastProgress.durationMs > 0 && !lastProgress.paused) updateProgressBar(); }
+    setInterval(progressTick, 1000);
+    function updateMediaSessionState(state) {
+      if (!('mediaSession' in navigator) || !('setPositionState' in navigator.mediaSession)) return;
+      try {
+        const duration = state?.duration || 0, position = state?.position || 0;
+        if (duration > 0) navigator.mediaSession.setPositionState({ duration, playbackRate: state.paused ? 0 : 1, position: Math.min(position, duration) });
+      } catch (e) { console.warn('setPositionState Fehler:', e); }
+    }
+    function ingestProgress(positionMs, durationMs, paused) {
+      // Bekannte gueltige Dauer NICHT mit 0/undefiniert ueberschreiben (Spotify-API-Luecke bei Episoden)
+      const finalDur = (!durationMs || durationMs <= 0) ? (lastProgress.durationMs || 0) : durationMs;
+      lastProgress = { positionMs: positionMs || 0, durationMs: finalDur, paused, updatedAt: Date.now(), trackId: currentTrackKey };
+      if (!isDragging) updateProgressBar();
+    }
+    function setupMediaSessionHandlers() {
+      if (!('mediaSession' in navigator)) return;
+      const ms = navigator.mediaSession;
+      try { ms.setActionHandler('seekto', d => { if (d.seekTime != null) seekMs(Math.round(d.seekTime * 1000)); }); } catch (e) {}
+      try { ms.setActionHandler('seekbackward', d => { const back = d.seekOffset || 30; if (lastProgress.durationMs) { const target = Math.max(0, Math.min(lastProgress.durationMs / 1000, (lastProgress.positionMs + (lastProgress.paused ? 0 : Date.now() - lastProgress.updatedAt)) / 1000) - back); seekMs(Math.round(target * 1000)); } }); } catch (e) {}
+      try { ms.setActionHandler('seekforward', d => { const fwd = d.seekOffset || 30; if (lastProgress.durationMs) { const target = Math.min(lastProgress.durationMs / 1000, ((lastProgress.positionMs + (lastProgress.paused ? 0 : Date.now() - lastProgress.updatedAt)) / 1000) + fwd); seekMs(Math.round(target * 1000)); } }); } catch (e) {}
+      try { ms.setActionHandler('play', () => webPlayer?.resume()); } catch (e) {}
+      try { ms.setActionHandler('pause', () => webPlayer?.pause()); } catch (e) {}
+      try { ms.setActionHandler('nexttrack', () => control('next')); } catch (e) {}
+      try { ms.setActionHandler('previoustrack', () => control('previous')); } catch (e) {}
+    }
+    function initProgressBarDrag() {
+      const bar = $('progress-bar');
+      if (!bar || bar.dataset.dragInit) return;
+      bar.dataset.dragInit = '1';
+      const startDrag = () => { isDragging = true; };
+      const endDrag = commit => {
+        if (!isDragging) return;
+        const targetMs = Math.round((Number(bar.value) / 1000) * lastProgress.durationMs);
+        if (commit && lastProgress.durationMs > 0 && webPlayer) { seekMs(targetMs); }
+        dragCooldownUntil = Date.now() + 300;
+        setTimeout(() => { isDragging = false; }, 300);
+      };
+      bar.addEventListener('touchstart', startDrag, { passive: true });
+      bar.addEventListener('mousedown', startDrag);
+      bar.addEventListener('touchend', () => endDrag(true), { passive: true });
+      bar.addEventListener('mouseup', () => endDrag(true));
+      bar.addEventListener('change', () => endDrag(true));
+      bar.addEventListener('input', () => { if (lastProgress.durationMs > 0) $('current-time').textContent = fmtTime((Number(bar.value) / 1000) * lastProgress.durationMs); });
+    }
     async function login() {
       const verifier = randomString(128), digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier)), challenge = btoa(String.fromCharCode(...new Uint8Array(digest))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
       localStorage.setItem('pkce', verifier);
@@ -740,7 +919,36 @@ async function control(action) {
         showLogin();
       }
     }
-    $('login').onclick = login; $('back').onclick = overview; $('previous').onclick = () => control('previous'); $('next').onclick = () => control('next');$('toggle').onclick = async () => {
+    $('login').onclick = login; $('back').onclick = overview; $('previous').onclick = () => control('previous'); $('next').onclick = () => control('next');
+    $('restart').onclick = async () => {
+      const svg = $('restart').querySelector('svg'); if (svg) { svg.classList.add('spin'); setTimeout(() => svg.classList.remove('spin'), 650); }
+      // 1) Hörspiel-Gruppe: die GANZE Geschichte von Kapitel 1 neu (mit Queue)
+      if (lastUserGroupObj?.episodes?.length) {
+        try { await playEpisodeGroup(lastUserGroupObj, null, true); } catch (e) { console.error('Restart Gruppe:', e); showNotice('Neustart fehlgeschlagen.'); }
+        hideNotice(); return;
+      }
+      // 2) Podcast: laufende Episode aus Show-Liste neu starten
+      if (currentPodcastEpisodes.length && currentPodcastIndex !== -1) { await playEpisode(currentPodcastEpisodes[currentPodcastIndex], true, currentPodcastIndex); hideNotice(); return; }
+      // 3) Laufenden Titel ermitteln und neu starten
+      let item = null;
+      try {
+        const r = await fetch('https://api.spotify.com/v1/me/player', { headers: { Authorization: 'Bearer ' + token() } });
+        if (r.ok) item = (await r.json())?.item || null;
+      } catch (e) { console.warn('Restart: Player-State nicht abrufbar:', e); }
+      if (!item?.id && lastActive?.id) {
+        item = currentPodcastEpisodes.find(x => String(x.id) === String(lastActive.id)) || null;
+        if (!item) { item = { id: lastActive.id, name: lastActive.title, type: 'episode', uri: 'spotify:episode:' + lastActive.id }; }
+      }
+      if (!item?.id) { showNotice('Kein laufender Titel. Bitte zuerst eine Kachel starten.'); return; }
+      const isEpisode = item.type === 'episode' || String(item.uri || '').startsWith('spotify:episode:');
+      if (isEpisode) { await playEpisode(item, true); }
+      else {
+        const t = { id: item.id, name: item.name };
+        const pid = (playlists.find(p => t.name && p.tracks?.items?.some?.(x => x.track?.id === t.id)) || {}).id;
+        if (pid) await playTrack(pid, t); else await play({ uris: ['spotify:track:' + t.id], position_ms: 0 });
+      }
+      hideNotice();
+    };$('toggle').onclick = async () => {
       try {
         const r = await fetch('https://api.spotify.com/v1/me/player', { headers: { Authorization: 'Bearer ' + token() } });
         if (r.status === 200) {
