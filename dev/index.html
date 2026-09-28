@@ -56,6 +56,22 @@ let currentPodcastEpisodes = [], currentPodcastIndex = -1;
     let isDragging = false, dragCooldownUntil = 0;
     const episodeDurationCache = {};
     let currentTrackKey = null;
+    let lastUserMarkId = null;           // Kachel-ID, die der User zuletzt gestartet hat
+    let lastUserMarkGroup = null;        // Gruppen-Key, falls Horspiel-Gruppe
+    const episodeGroupMap = new Map();   // episodeId -> group.key (Hoerspiel-Gruppen)
+    function isMarkSameGroup(candidateId) {
+      // Erlaube Ueberschreiben nur wenn dieselbe User-Kachel aktiv ist (Gruppen-Nachfolger)
+      if (!lastUserMarkId) return true;
+      if (String(candidateId) === String(lastUserMarkId)) return true;
+      // Hoerspiel-Gruppe: Nachfolger-Kapitel gehören zur gestarteten Kachel
+      if (lastUserMarkGroup && episodeGroupMap.get(String(candidateId)) === lastUserMarkGroup) return true;
+      return false;
+    }
+    function lockMarkFor(id, groupKey = null) {
+      lastUserMarkId = id ? String(id) : null;
+      lastUserMarkGroup = groupKey;
+      markLockUntil = Date.now() + 8000;   // Schutzfenster bis SDK den neuen Track bestätigt
+    }
     let lastProgress = { positionMs: 0, durationMs: 0, paused: true, updatedAt: 0 };
     
     function loading(text) { $('loading').textContent = text || ''; $('loading').style.display = text ? 'block' : 'none'; }
@@ -110,7 +126,7 @@ let currentPodcastEpisodes = [], currentPodcastIndex = -1;
         }
         lastActive = { id: String(id), title: item?.name || lastActive?.title || 'Kein Titel aktiv' };
         $('now').textContent = lastActive.title;
-        if (Date.now() >= markLockUntil) markActive(id);
+        if (Date.now() >= markLockUntil || isMarkSameGroup(String(id))) markActive(id);
       } else if (lastActive) {
         $('now').textContent = lastActive.title;
         markActive(lastActive.id);
@@ -250,6 +266,9 @@ let currentPodcastEpisodes = [], currentPodcastIndex = -1;
         });
       });
 
+      Array.from(groupsMap.values()).forEach(group => {
+        group.episodes.forEach(eItem => { episodeGroupMap.set(String(eItem.episode?.id || ''), group.key); });
+      });
       return Array.from(groupsMap.values()).map(group => {
         group.episodes.sort((a, b) => (a.chapterNumber - b.chapterNumber) || (a.index - b.index));
         return {
@@ -378,6 +397,7 @@ async function playEpisodeGroup(group, playlistId, restart) {
       // 1. Sofortiges UI Feedback
       lastActive = { id: String(firstEpisode.id), title: group.title || firstEpisode.name };
       $('now').textContent = lastActive.title;
+      lockMarkFor(String(firstEpisode.id), group.key || null);
       markActive(firstEpisode.id);
 
       // 2. Ersten Titel über die bestehende playTrack-Logik mit Playlist-Kontext starten
@@ -507,7 +527,7 @@ async function loadPlaylist(id, title, categoryKey) {
           currentPlaybackMode = 'podcast';
           hideNotice();
           lastActive = { id: String(e.id), title: e.name };
-          markLockUntil = Date.now() + 1200;
+          lockMarkFor(String(e.id));
           markActive(e.id);
           $('now').textContent = e.name;
           setTimeout(updatePlayer, 500);
@@ -592,7 +612,7 @@ async function playTrack(pid, t) {
           currentPlaybackMode = 'track';
           hideNotice();
           lastActive = { id: String(t.id), title: t.name };
-          markLockUntil = Date.now() + 1200;
+          lockMarkFor(String(t.id));
           markActive(t.id);
           $('now').textContent = t.name;
           setTimeout(updatePlayer, 500);
