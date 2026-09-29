@@ -838,6 +838,8 @@ async function control(action) {
       webPlayer.addListener('not_ready', ({ device_id }) => {
         if (webPlayerDeviceId === device_id) webPlayerDeviceId = null;
         webPlayerReady = false;
+        // Reconnect-Versuch nach kurzer Warteszeit (Screen-off killed oft die Verbindung)
+        setTimeout(() => { try { webPlayer?.connect(); } catch (e) {} }, 4000);
       });
       webPlayer.addListener('initialization_error', ({ message }) => { console.warn('Spotify initialization_error:', message); showNotice('Web-Player konnte nicht initialisiert werden.'); });
       webPlayer.addListener('authentication_error', ({ message }) => {
@@ -855,10 +857,11 @@ async function control(action) {
         const cur = state.track_window?.current_track;
         ingestProgress(state.position || 0, state.duration || 0, !!state.paused);
         updateMediaSessionState({ duration: (state.duration || 0) / 1000, position: (state.position || 0) / 1000, paused: !!state.paused });
-        if (cur) {
-          if ('mediaSession' in navigator) {
-            navigator.mediaSession.metadata = new window.MediaMetadata({ title: cur.name || '', artist: cur.artists?.map(a => a.name).join(', ') || '', album: cur.album?.name || '', artwork: (cur.album?.images || []).slice(0, 2).map(i => ({ src: i.url, sizes: (i.width && i.height) ? `${i.width}x${i.height}` : '', type: 'image/jpeg' })) });
-          }
+        // Metadata: bei jedem Update setzen (auch ohne cur -> letzte active Info),
+        // sonst kann Android den Audio-Fokus beim Screen-off entziehen
+        if ('mediaSession' in navigator) {
+          const src = cur || lastActive && { name: lastActive.title };
+          if (src) navigator.mediaSession.metadata = new window.MediaMetadata({ title: src.name || lastActive?.title || '', artist: 'KinderPlayer' });
         }
         applyPlaybackState(!state.paused, cur);
       });
@@ -869,6 +872,26 @@ async function control(action) {
       });
     }
     window.onSpotifyWebPlaybackSDKReady = () => initWebPlayer();
+    // Screen-off/-an-Behandlung: Nach Tab-Return prüfen, ob Wiedergabe weiter soll
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState !== 'visible') return;
+      if (!webPlayer) return;
+      // Wenn wir "playing" waren beim Sperren und jetzt pausiert sind (SDK-Sync-Verlust): resume
+      const warPlaying = !lastProgress?.paused;
+      setTimeout(async () => {
+        try {
+          const r = await fetch('https://api.spotify.com/v1/me/player', { headers: { Authorization: 'Bearer ' + token() } });
+          if (r.status === 204) return;
+          if (r.status !== 200) return;
+          const d = await r.json();
+          // Wiedergabe sollte laufen aber Spotify meldet paused && keine Absicht -> resume
+          if (!d.is_playing && warPlaying && d.device?.id === webPlayerDeviceId) {
+            await webPlayer.resume().catch(() => {});
+          }
+          updatePlayer();
+        } catch (e) { console.warn('visibility-resume:', e); }
+      }, 800);
+    });
     // --- Fortschritt & Media Session ---
     function fmtTime(ms) { const s = Math.max(0, Math.floor(ms / 1000)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
     function updateProgressBar() {
@@ -886,10 +909,13 @@ async function control(action) {
     function progressTick() { if (!isDragging && lastProgress.durationMs > 0 && !lastProgress.paused) updateProgressBar(); }
     setInterval(progressTick, 1000);
     function updateMediaSessionState(state) {
-      if (!('mediaSession' in navigator) || !('setPositionState' in navigator.mediaSession)) return;
+      if (!('mediaSession' in navigator)) return;
+      const ms = navigator.mediaSession;
       try {
         const duration = state?.duration || 0, position = state?.position || 0;
-        if (duration > 0 && !state.paused) navigator.mediaSession.setPositionState({ duration, playbackRate: 1, position: Math.min(position, duration) });
+        // playbackState: explizit immer setzen (wichtig für Background-Audio-Fokus!)
+        ms.playbackState = state?.paused ? 'paused' : 'playing';
+        if ('setPositionState' in ms && duration > 0 && !state.paused) ms.setPositionState({ duration, playbackRate: 1, position: Math.min(position, duration) });
       } catch (e) { console.warn('setPositionState Fehler:', e); }
     }
     function ingestProgress(positionMs, durationMs, paused) {
