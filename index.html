@@ -447,7 +447,47 @@ async function playEpisodeGroup(group, playlistId, restart) {
         }
       }
     }
-async function loadPlaylist(id, title, categoryKey) {
+    const AI_BACKEND = 'https://portable-distributions-beach-big.trycloudflare.com';
+    async function fetchAiChapterStructure(playlistId, items) {
+      // Items -> Titel-Liste; Backend analysiert (Gemini) und liefert Kapitel-Gruppen (mit Cache)
+      const entries = items.map(entry).filter(Boolean);
+      const titles = entries.map(e => e.name);
+      if (!titles.length) return null;
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), 12000);
+      try {
+        const r = await fetch(`${AI_BACKEND}/api/structure`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ playlist_id: playlistId, titles }),
+          signal: ctrl.signal,
+        });
+        if (!r.ok) return null;
+        const d = await r.json();
+        const chapters = d?.structure?.chapters;
+        if (!Array.isArray(chapters) || !chapters.length) return null;
+
+        // chapters -> group-Objekte (kompatibel zu playEpisodeGroup)
+        const groups = [];
+        chapters.forEach(ch => {
+          const idxs = (ch.track_indices || []).filter(i => Number.isInteger(i) && i >= 0 && i < entries.length);
+          if (!idxs.length) return;
+          const episodes = idxs.map(i => entries[i]);
+          const key = 'ai::' + (episodes[0]?.id || ch.display_title);
+          const group = {
+            key,
+            title: ch.display_title || episodes[0]?.name || 'Hörspiel',
+            episodes,
+            subtitle: ch.subtitle || '',
+          };
+          groups.push(group);
+          episodes.forEach(ep => episodeGroupMap.set(String(ep?.id || ''), key));
+          groupByKey.set(key, group);
+        });
+        return groups.length ? groups : null;
+      } finally { clearTimeout(t); }
+    }
+    async function loadPlaylist(id, title, categoryKey) {
       const current = ++requestId; loading('Lade Inhalte...'); $('categories').style.display = 'none'; setDetail(true); $('grid').innerHTML = '';$('title').textContent = title;
       const isPodcast = categoryKey === 'podcast';
       const isAudioDrama = categoryKey === 'audio';
@@ -484,7 +524,14 @@ async function loadPlaylist(id, title, categoryKey) {
         }
         
         if (isAudioDrama) {
-          const groupedEpisodes = groupChaptersByEpisode(items);
+          // 1) Versuch: KI-Backend (KI-Kapitel-Struktur), 2) Fallback: bestehende RegEx-Logik
+          let aiGroups = null;
+          try {
+            aiGroups = await fetchAiChapterStructure(id, items);
+          } catch (err) { console.warn('KI-Struktur fehlgeschlagen, nutze RegEx-Fallback:', err); }
+          if (current !== requestId) return;
+
+          const groupedEpisodes = aiGroups || groupChaptersByEpisode(items);
           if (groupedEpisodes.length) {
             const b = $('grid'); b.innerHTML = '';
             groupedEpisodes.forEach(group => {
@@ -842,7 +889,7 @@ async function control(action) {
       if (!('mediaSession' in navigator) || !('setPositionState' in navigator.mediaSession)) return;
       try {
         const duration = state?.duration || 0, position = state?.position || 0;
-        if (duration > 0) navigator.mediaSession.setPositionState({ duration, playbackRate: state.paused ? 0 : 1, position: Math.min(position, duration) });
+        if (duration > 0 && !state.paused) navigator.mediaSession.setPositionState({ duration, playbackRate: 1, position: Math.min(position, duration) });
       } catch (e) { console.warn('setPositionState Fehler:', e); }
     }
     function ingestProgress(positionMs, durationMs, paused) {
