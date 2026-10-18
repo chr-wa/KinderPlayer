@@ -12,6 +12,11 @@
     .batt{display:none;position:absolute;top:1px;right:0;font-size:.7rem;font-weight:600;color:#7d7d7d;font-variant-numeric:tabular-nums;letter-spacing:.03em}
     .batt.show{display:block}
     .batt.low{color:#c9a227}.batt.crit{color:#c0392b}
+    /* Anmeldung neu anstoßen: unauffällig oben links, Spiegelbild der Akkuanzeige.
+       Bewusst klein und dunkelgrau - die Kinder tippen alles an, was auffällt. */
+    .relogin{position:absolute;top:-4px;left:-6px;width:34px;height:34px;padding:0;margin:0;border:0;background:none;color:#4f4f4f;font-size:1.05rem;line-height:1;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:color .15s}
+    .relogin:active{color:#8a8a8a}
+    .relogin.armt{color:#c9a227}
     /* h1 ist Bezugsrahmen; das symmetrische padding reserviert die Ecke fuer die Zahl,
        ohne die Zentrierung der Ueberschrift zu verschieben. */
     h1{position:relative;padding:0 42px}
@@ -19,7 +24,7 @@
   </style>
 </head>
 <body>
-  <h1 id="title"><span id="title-text">KinderPlayer</span><span id="batt" class="batt" role="status" aria-live="off" title="Akkustand"><span id="batt-text">--</span></span></h1>
+  <h1 id="title"><span id="title-text">KinderPlayer</span><span id="batt" class="batt" role="status" aria-live="off" title="Akkustand"><span id="batt-text">--</span></span><button id="relogin" class="relogin" type="button" aria-label="Anmeldung erneuern" title="Anmeldung erneuern">↻</button></h1>
   <button id="login" class="btn-login" type="button">Einmalig bei Spotify anmelden</button>
   <div id="categories" class="category-bar" style="display:none"></div>
   <div id="loading" class="loading"></div>
@@ -100,8 +105,9 @@ let currentPodcastEpisodes = [], currentPodcastIndex = -1;
       box.classList.add('show');
       box.classList.toggle('low', !charging && pct <= 25 && pct > 10);
       box.classList.toggle('crit', !charging && pct <= 10);
-      // Nur die Prozentzahl, ganz klein in der Ecke — kein Symbol, kein Kasten
-      $('batt-text').textContent = pct + '%';
+      // Nur die Prozentzahl, ganz klein in der Ecke — kein Symbol, kein Kasten.
+      // Der Blitz erscheint ausschliesslich waehrend des Ladens.
+      $('batt-text').textContent = (charging ? '⚡ ' : '') + pct + '%';
     }
     async function initBatteryStatus() {
       if (!('getBattery' in navigator)) return;   // Feature-Erkennung: sonst nichts anzeigen
@@ -113,6 +119,33 @@ let currentPodcastEpisodes = [], currentPodcastIndex = -1;
         batteryObj.addEventListener('levelchange', upd);
         batteryObj.addEventListener('chargingchange', upd);
       } catch (e) { console.warn('Akkustand nicht verfügbar:', e); batteryOk = false; }
+    }
+    // Anmeldung neu anstoßen (Token-Erneuerung reicht manchmal nicht: Spotify sperrt
+    // Refresh-Tokens, oder die Berechtigungen haben sich geändert).
+    // Auslöser ist bewusst KEIN einfacher Tipp, sondern 1,5 s Drücken: Die Kinder
+    // tippen alles an, und ein versehentlicher Treffer würde die App abmelden.
+    // Während des Haltens färbt sich das Symbol gelb.
+    function initRelogin() {
+      const btn = $('relogin'); if (!btn) return;
+      let timer = null;
+      const loslassen = () => {
+        if (timer) { clearTimeout(timer); timer = null; }
+        btn.classList.remove('armt');
+      };
+      btn.addEventListener('pointerdown', e => {
+        e.preventDefault();
+        if (timer) return;
+        btn.classList.add('armt');
+        timer = setTimeout(() => {
+          timer = null;
+          btn.classList.remove('armt');
+          clearAuthAndLogin();
+        }, 1500);
+      });
+      btn.addEventListener('pointerup', loslassen);
+      btn.addEventListener('pointercancel', loslassen);
+      btn.addEventListener('pointerleave', loslassen);
+      btn.addEventListener('contextmenu', e => e.preventDefault());
     }
     function setDetail(v) { $('nav').style.display = v ? 'block' : 'none'; document.body.classList.toggle('detail', v); $('categories').classList.toggle('sticky', !v); }
 
@@ -1314,6 +1347,11 @@ async function control(action) {
         if (code) return exchange(code);
 
         const t = localStorage.getItem('access_token'); 
+        // Akkuanzeige und Anmelde-Knopf VOR der Token-Pruefung registrieren:
+        // bei fehlendem Token kehrt die Init oben mit return zurueck, sonst
+        // blieben beide Elemente tot (der Knopf waere sichtbar, aber wirkungslos).
+        initBatteryStatus();
+        initRelogin();
         if (!t) {
           showLogin();
           return;
@@ -1332,7 +1370,6 @@ async function control(action) {
         await tokenValid();
         // Zweite Sicherung: Token ohne hinterlegten Ablauf (z. B. alter Stand) einmal pro Start vorwaermen
         if (!tokenExpiresAt && token()) await refreshAccessToken();
-        initBatteryStatus();
         initBottomPaddingSync();
         const r = await apiFetch('https://api.spotify.com/v1/me', () => ({ headers: { Authorization: 'Bearer ' + token() } }));
         if (r.ok) {
